@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SkillGap — a working notebook for the job you want next</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toasts" role="status" aria-live="polite"></div>
+<div class="scrim" onclick="document.body.classList.remove('nav-open')"></div>
+<svg style="display:none" aria-hidden="true">
+<symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="8"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="11" width="7" height="10"/><rect x="3" y="14" width="7" height="7"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+<symbol id="i-case" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13"/><path d="M9 7V5h6v2M3 12h18"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19a2 2 0 012-2h13"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5M3 17l9 5 9-5"/></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+<symbol id="i-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4 12a8 8 0 01.2-1.8L2.5 8.8l2-3.5 2.1.9A8 8 0 019.2 4.5L9.5 2.3h4l.3 2.2a8 8 0 012.6 1.7l2.1-.9 2 3.5-1.7 1.4a8 8 0 010 3.6l1.7 1.4-2 3.5-2.1-.9a8 8 0 01-2.6 1.7l-.3 2.2h-4l-.3-2.2a8 8 0 01-2.6-1.7l-2.1.9-2-3.5 1.7-1.4A8 8 0 014 12z"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 01-3.4 0"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.9L19 10l-5.1 2.1L12 17l-1.9-4.9L5 10l5.1-2.1z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 20h16"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7.5 8.5L12 4l4.5 4.5M4 20h16"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s5 4.2 5 9a5 5 0 01-10 0c0-1.6.7-3 1.5-4 .2 1.3 1 2 1.8 2 1.2 0 1.2-1.6 1.2-3 0-2 .5-3.4.5-4z"/></symbol>
+<symbol id="i-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.5 14L7 22l5-2.5L17 22l-1.5-8"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3l9-16z"/><path d="M12 10v4M12 17.5h.01"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 8L4 12l4.5 4M15.5 8l4.5 4-4.5 4"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.5 2.5 0 10-3.5-3.5L4 16.5z"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11"/><path d="M8 10V7a4 4 0 118 0v3"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20H5a1 1 0 01-1-1V5a1 1 0 011-1h4M15 16l4-4-4-4M19 12H9"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+<symbol id="i-msg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-8 8H4l2-3a8 8 0 1115-5z"/></symbol>
+<symbol id="i-build" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l7-4 7 4v13"/><path d="M9 21v-5h4v5M8 11h.01M14 11h.01"/></symbol>
+<symbol id="i-gear2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 20V9l6-5 6 5v11"/><circle cx="12" cy="13" r="2.5"/></symbol>
+<symbol id="i-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+<symbol id="i-mega" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4a1 1 0 001 1h3l6 4V5L8 9H5a1 1 0 00-1 1z"/><path d="M18 9a4 4 0 010 6"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v9l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v9"/></symbol>
+</svg>
+
+<!-- ==================== MARKETING ==================== -->
+<div id="marketing">
+<section class="mkview" id="v-landing">
+  <header class="mk-nav">
+    <div class="mk">
+      <a class="logo" href="#" onclick="showLanding();return false"><span class="mark"><svg><use href="#i-target"/></svg></span>SkillGap</a>
+      <nav class="mk-links"><a href="#how">How it works</a><a href="#tracks">Tracks</a><a href="#inside">What's inside</a></nav>
+      <span class="spacer"></span>
+      <button class="btn btn-quiet btn-sm" onclick="showAuth('login')">Log in</button>
+      <button class="btn btn-primary btn-sm" onclick="showAuth('signup')">Start free</button>
+    </div>
+  </header>
+
+  <div class="mk">
+    <div class="hero">
+      <div>
+        <span class="hand">a working notebook, not a job board</span>
+        <h1>Find out what's actually <span class="hl">missing</span> between you and the job you want.</h1>
+        <p class="lede">Upload your resume, pick the role you're aiming at — backend engineer, product manager, site engineer, financial analyst — and get an honest gap report with a week-by-week plan to close it.</p>
+        <div class="row wrap" style="margin:24px 0 20px;gap:10px">
+          <button class="btn btn-primary btn-lg" onclick="showAuth('signup')">Check my gap</button>
+          <button class="btn btn-lg" onclick="openRolePicker(true)">Try the demo</button>
+        </div>
+        <div class="stack" style="gap:7px">
+          <div class="tick"><svg><use href="#i-check"/></svg><span>Works for IT, MBA and core engineering roles, not just software.</span></div>
+          <div class="tick"><svg><use href="#i-check"/></svg><span>Built from real job postings, refreshed every month.</span></div>
+          <div class="tick"><svg><use href="#i-check"/></svg><span>No credit card. Nothing is posted anywhere.</span></div>
+        </div>
+      </div>
+
+      <div class="card lift pad" id="gapviz">
+        <div class="between" style="border-bottom:1.5px solid var(--rule);padding-bottom:10px;margin-bottom:4px">
+          <div><b style="font-family:var(--font-d);font-size:15px" id="gvTitle">Civil / Site Engineer</b>
+            <div class="muted" style="font-size:12px">Your level against 95 job postings</div></div>
+          <span class="tag y" id="gvScore">54% ready</span>
+        </div>
+        <div id="gvRows"></div>
+        <div class="row" style="margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);font-size:12px;color:var(--ink-3)">
+          <span class="row" style="gap:6px"><i style="width:16px;height:8px;background:var(--green);border:1px solid var(--rule)"></i>where you are</span>
+          <span class="row" style="gap:6px"><i style="width:2.5px;height:13px;background:var(--ink)"></i>what the job asks for</span>
+          <span class="spacer"></span>
+          <button class="btn btn-quiet btn-sm" onclick="cycleGv()">Show another role</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mk mk-sec" id="how">
+    <h2>Four steps, and no motivational speech</h2>
+    <p class="muted" style="margin-top:9px;max-width:56ch">Most people guess at what they're missing and then study the wrong thing for six months. This is an attempt to stop that.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Show us your resume</h3><p>Scored for keyword coverage, weak bullets, missing sections and the formatting that breaks parsers.</p></div>
+      <div class="step"><div class="n">2</div><h3>Pick the role</h3><p>Eight tracks across software, business and core engineering, each built from live postings.</p></div>
+      <div class="step"><div class="n">3</div><h3>Read the gap</h3><p>Every skill sorted into strong, moderate and critical against what employers actually ask for.</p></div>
+      <div class="step"><div class="n">4</div><h3>Work the plan</h3><p>Weekly milestones with resources, practice and one piece of portfolio work per phase.</p></div>
+    </div>
+  </div>
+
+  <div class="mk mk-sec" id="tracks">
+    <h2>Three tracks. Not everyone writes code.</h2>
+    <p class="muted" style="margin-top:9px;max-width:58ch">A civil engineer's gap is Primavera and quantity surveying. An MBA's is SQL and a number on every bullet. The report should know the difference.</p>
+    <div class="cols3" id="trackCards"></div>
+  </div>
+
+  <div class="mk mk-sec" id="inside">
+    <h2>What's in the notebook</h2>
+    <div class="cols3">
+      <div class="track-card"><h3>Resume builder and analyser</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Four print-ready templates, a live preview, and an honest score with the bullets rewritten for you.</p></div>
+      <div class="track-card"><h3>Job description analyser</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Paste a posting; get the required skills, the preferred ones, the duties and the words the filter looks for.</p></div>
+      <div class="track-card"><h3>Skill gap and roadmap</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Current level against the hiring bar, then a dated plan with resources and portfolio work.</p></div>
+      <div class="track-card"><h3>Study library</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Courses, docs, practice sets and your own notes — filtered to the skills you're actually short on.</p></div>
+      <div class="track-card"><h3>Project recommendations</h3><p class="muted" style="font-size:13.5px;margin-top:6px">A BOQ, a CAC model, a rate limiter or a GD&amp;T pack, depending on who you are.</p></div>
+      <div class="track-card"><h3>Progress</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Study hours, readiness over time, and whether the curve is actually bending.</p></div>
+    </div>
+  </div>
+
+  <div class="mk" style="padding:10px 24px 60px">
+    <div class="card lift pad" style="padding:38px 32px;text-align:center">
+      <h2 style="max-width:22ch;margin:0 auto">Where do you actually stand today?</h2>
+      <p class="muted" style="max-width:52ch;margin:12px auto 22px">A resume, a target role, about a minute. You'll get a readiness score and the first week of a plan.</p>
+      <button class="btn btn-primary btn-lg" onclick="showAuth('signup')">Create a free account</button>
+    </div>
+  </div>
+
+  <div class="mk mk-foot"><span>SkillGap — a frontend prototype. Every name, number and posting here is sample data.</span><span>Privacy · Terms</span></div>
+</section>
+
+<section class="mkview" id="v-login" style="display:none">
+  <div class="auth">
+    <div class="auth-form"><div class="auth-inner">
+      <a class="logo" href="#" onclick="showLanding();return false"><span class="mark"><svg><use href="#i-target"/></svg></span>SkillGap</a>
+      <h1>Welcome back</h1>
+      <p class="muted">Your plan is where you left it.</p>
+      <div class="stack" style="margin-top:22px;gap:12px">
+        <label class="field"><span>Email</span><input class="inp" type="email" value="you@example.com"></label>
+        <label class="field"><span>Password</span><input class="inp" type="password" value="••••••••••"></label>
+        <div class="between" style="font-size:13px">
+          <label class="row" style="gap:7px;cursor:pointer"><input type="checkbox" checked style="width:15px;height:15px"><span class="muted">Stay signed in</span></label>
+          <a href="#" style="font-weight:600;border-bottom:1.5px solid var(--mark)" onclick="toast('Reset link sent','Check your inbox.');return false">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" onclick="openRolePicker(true)">Log in</button>
+      </div>
+      <div class="divider">or</div>
+      <button class="btn btn-block" onclick="openRolePicker(true)">Continue with Google</button>
+      <p class="muted" style="text-align:center;margin-top:18px;font-size:13px">New here? <a href="#" style="font-weight:600;border-bottom:1.5px solid var(--mark)" onclick="showAuth('signup');return false">Create an account</a></p>
+    </div></div>
+    <div class="auth-side">
+      <span class="hand">from a user in Nagpur, September</span>
+      <blockquote>“I'd been applying for eight months. The report said Primavera and BOQ in ten minutes. Nobody had ever told me that.”</blockquote>
+      <div><b>Rohit D.</b><div class="muted" style="font-size:13px">Site engineer → project engineer</div></div>
+      <div class="row wrap" style="gap:26px;padding-top:18px;border-top:1.5px solid var(--line)">
+        <div><b class="num" style="font-size:24px;display:block">8</b><span class="muted" style="font-size:12px">role tracks</span></div>
+        <div><b class="num" style="font-size:24px;display:block">31k</b><span class="muted" style="font-size:12px">resumes scored</span></div>
+        <div><b class="num" style="font-size:24px;display:block">+24</b><span class="muted" style="font-size:12px">average gain</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mkview" id="v-signup" style="display:none">
+  <div class="auth">
+    <div class="auth-form"><div class="auth-inner">
+      <a class="logo" href="#" onclick="showLanding();return false"><span class="mark"><svg><use href="#i-target"/></svg></span>SkillGap</a>
+      <h1>Create your account</h1>
+      <p class="muted">Two minutes of setup, then your first gap report.</p>
+      <div class="stack" style="margin-top:20px;gap:12px">
+        <div class="f2">
+          <label class="field"><span>First name</span><input class="inp" placeholder="First"></label>
+          <label class="field"><span>Last name</span><input class="inp" placeholder="Last"></label>
+        </div>
+        <label class="field"><span>Email</span><input class="inp" type="email" placeholder="you@example.com"></label>
+        <label class="field"><span>Password</span><input class="inp" type="password" placeholder="At least 8 characters"></label>
+        <label class="row" style="gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-3)">
+          <input type="checkbox" checked style="width:15px;height:15px;margin-top:3px"><span>I agree to the terms and the privacy policy.</span></label>
+        <button class="btn btn-primary btn-lg btn-block" onclick="openRolePicker(true)">Continue</button>
+      </div>
+      <p class="muted" style="text-align:center;margin-top:16px;font-size:13px">Already registered? <a href="#" style="font-weight:600;border-bottom:1.5px solid var(--mark)" onclick="showAuth('login');return false">Log in</a></p>
+    </div></div>
+    <div class="auth-side">
+      <span class="hand">from a user in Mumbai, August</span>
+      <blockquote>“I'm an MBA. Every career tool I tried assumed I wanted to be a developer. This one asked what I actually do.”</blockquote>
+      <div><b>Rhea K.</b><div class="muted" style="font-size:13px">Business analyst → product manager</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ROLE PICKER -->
+<section class="mkview" id="v-role" style="display:none">
+  <div class="mk" style="padding-top:44px;padding-bottom:60px;max-width:900px">
+    <a class="logo" href="#" onclick="showLanding();return false"><span class="mark"><svg><use href="#i-target"/></svg></span>SkillGap</a>
+    <h1 style="font-size:31px;margin:22px 0 8px;letter-spacing:-.025em">Which job are you aiming at?</h1>
+    <p class="muted" style="max-width:56ch">Everything — the gap report, the roadmap, the study library, the sample resume — is built around this answer. You can change it later without losing anything.</p>
+    <div id="rolePicker" style="margin-top:26px"></div>
+    <div class="row" style="margin-top:26px;gap:10px">
+      <button class="btn btn-primary btn-lg" id="roleGo" onclick="confirmRole()">Build my notebook</button>
+      <span class="hand" style="margin-left:6px">pick the one you'd apply to tomorrow</span>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="app"><div class="shell">
+<aside class="sidebar">
+  <div class="sb-head"><a class="logo" href="#" onclick="showLanding();return false"><span class="mark"><svg><use href="#i-target"/></svg></span>SkillGap</a></div>
+  <nav class="sb-nav">
+    <button class="nav-i active" data-go="dashboard"><svg><use href="#i-grid"/></svg>Dashboard</button>
+    <button class="nav-i" data-go="profile"><svg><use href="#i-user"/></svg>Profile</button>
+    <div class="sb-group">Resume</div>
+    <button class="nav-i" data-go="builder"><svg><use href="#i-edit"/></svg>Resume builder</button>
+    <button class="nav-i" data-go="analyzer"><svg><use href="#i-shield"/></svg>Resume analyser</button>
+    <button class="nav-i" data-go="myresumes"><svg><use href="#i-file"/></svg>My resumes<span class="badge">3</span></button>
+    <div class="sb-group">Jobs</div>
+    <button class="nav-i" data-go="jd"><svg><use href="#i-case"/></svg>Job description</button>
+    <button class="nav-i" data-go="keywords"><svg><use href="#i-search"/></svg>Keyword suggester</button>
+    <button class="nav-i" data-go="match"><svg><use href="#i-link"/></svg>Job match</button>
+    <div class="sb-group">Your plan</div>
+    <button class="nav-i" data-go="gap"><svg><use href="#i-target"/></svg>Skill gap</button>
+    <button class="nav-i" data-go="roadmap"><svg><use href="#i-map"/></svg>Roadmap<span class="badge" id="sbWeek">W5</span></button>
+    <button class="nav-i" data-go="study"><svg><use href="#i-book"/></svg>Study materials</button>
+    <button class="nav-i" data-go="projects"><svg><use href="#i-layers"/></svg>Projects</button>
+    <button class="nav-i" data-go="progress"><svg><use href="#i-trend"/></svg>Progress</button>
+    <div class="sb-group">Account</div>
+    <button class="nav-i" data-go="settings"><svg><use href="#i-cog"/></svg>Settings</button>
+  </nav>
+  <div class="sb-foot">
+    <div class="note" style="margin-bottom:9px;padding:11px 12px">
+      <b style="font-family:var(--font-d);font-size:13.5px">Free plan</b>
+      <p style="font-size:12.5px;margin-top:2px">2 of 5 resume analyses used this month.</p>
+      <button class="btn btn-sm btn-block" style="margin-top:9px" onclick="openModal('mUpgrade')">Compare plans</button>
+    </div>
+    <div class="dropdown">
+      <button class="nav-i" style="width:100%" onclick="toggleMenu('mUser')">
+        <span class="avatar" style="width:25px;height:25px;font-size:11px" id="sbIni">AM</span>
+        <span id="sbName" style="font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Aarav Mehta</span>
+        <svg style="margin-left:auto;width:13px;height:13px"><use href="#i-down"/></svg>
+      </button>
+      <div class="menu" id="mUser" style="bottom:calc(100% + 6px);top:auto;left:0;right:0">
+        <button data-go="profile"><svg style="width:15px;height:15px"><use href="#i-user"/></svg>Profile</button>
+        <button onclick="openRolePicker(false)"><svg style="width:15px;height:15px"><use href="#i-target"/></svg>Change target role</button>
+        <button data-go="settings"><svg style="width:15px;height:15px"><use href="#i-cog"/></svg>Settings</button>
+        <hr><button onclick="showLanding()"><svg style="width:15px;height:15px"><use href="#i-out"/></svg>Log out</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <button class="icon-btn burger" onclick="document.body.classList.toggle('nav-open')" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+    <div class="searchbox"><svg><use href="#i-search"/></svg><input class="inp" id="globalSearch" placeholder="Search the library…"></div>
+    <span class="spacer"></span>
+    <button class="btn btn-sm" onclick="openRolePicker(false)" id="roleChip"><svg><use href="#i-target"/></svg><span>Backend Engineer</span></button>
+    <button class="btn btn-sm btn-mark" onclick="openModal('mAsk')"><svg><use href="#i-spark"/></svg>Ask coach</button>
+    <div class="dropdown">
+      <button class="icon-btn" onclick="toggleMenu('mBell')" aria-label="Notifications"><svg><use href="#i-bell"/></svg><i class="pip"></i></button>
+      <div class="menu" id="mBell" style="min-width:280px;padding:9px"><div id="bellList"></div></div>
+    </div>
+    <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Theme"><svg><use href="#i-moon"/></svg></button>
+    <span class="avatar" style="width:32px;height:32px;font-size:12.5px" id="tbIni">AM</span>
+  </header>
+
+  <div class="page-wrap">
+
+  <section class="page active" id="p-dashboard">
+    <div class="page-head">
+      <div><h1 id="dashHi">Good evening</h1><p id="dashSub"></p></div>
+      <div class="row"><button class="btn btn-sm" data-go="gap">Re-run the gap report</button><button class="btn btn-primary btn-sm" data-go="roadmap" id="dashCont">Continue</button></div>
+    </div>
+    <div id="dashBody"></div>
+  </section>
+
+  <section class="page" id="p-profile"><div class="page-head">
+    <div><h1>Profile</h1><p>This is what the gap report and the roadmap pacing are built from.</p></div>
+    <div class="row"><button class="btn btn-sm" onclick="toast('Exported','A JSON copy was prepared.')"><svg><use href="#i-dl"/></svg>Export</button>
+    <button class="btn btn-primary btn-sm" onclick="toast('Saved','Your plan re-balances overnight.')">Save changes</button></div></div>
+    <div id="profBody"></div>
+  </section>
+
+  <section class="page" id="p-builder">
+    <div class="page-head"><div><h1>Resume builder</h1><p>Edit on the left, watch the page rebuild on the right. All four templates are single-column and parse cleanly.</p></div>
+      <div class="row"><button class="btn btn-sm" onclick="toast('Saved','Stored as a new version.')"><svg><use href="#i-check"/></svg>Save</button>
+      <button class="btn btn-primary btn-sm" onclick="downloadResume()"><svg><use href="#i-dl"/></svg>Download PDF</button></div></div>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);gap:20px" id="builderGrid">
+      <div>
+        <div class="panel" style="margin-bottom:14px">
+          <div class="between ruled"><div><div class="sec-t">Template</div><div class="sec-sub">All four pass parser tests</div></div></div>
+          <div class="tpl-pick">
+            <button class="tpl on" data-tpl="ats"><span class="prev"><b></b><i></i><i class="s"></i><i></i><i class="s"></i></span><span>Plain</span><small>Safest parse</small></button>
+            <button class="tpl" data-tpl="bold"><span class="prev" style="background:var(--green-soft)"><b style="background:var(--green)"></b><i></i><i class="s"></i><i></i></span><span>Header</span><small>Colour band</small></button>
+            <button class="tpl" data-tpl="minimal"><span class="prev"><b style="width:36%"></b><i class="s"></i><i></i><i class="s"></i></span><span>Minimal</span><small>Airy</small></button>
+            <button class="tpl" data-tpl="classic"><span class="prev"><b style="width:64%"></b><i></i><i></i><i class="s"></i></span><span>Classic</span><small>Serif headings</small></button>
+          </div>
+        </div>
+        <div id="builderForm"></div>
+      </div>
+      <div>
+        <div class="between" style="margin-bottom:10px">
+          <div class="row"><span class="tag g"><i class="dot"></i>Parses cleanly</span><span class="tag">1 page</span></div>
+          <button class="btn btn-quiet btn-sm" onclick="openModal('mPreview')"><svg><use href="#i-eye"/></svg>Full screen</button>
+        </div>
+        <div class="paper" id="resumePaper" data-tpl="ats"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p-analyzer">
+    <div class="page-head"><div><h1>Resume analyser</h1><p>Scored the way a parser reads it, then the way a hiring manager does.</p></div>
+      <button class="btn btn-sm" id="reBtn" style="display:none" onclick="resetAn()">Analyse another file</button></div>
+    <div id="anUpload">
+      <div class="grid g-2-1">
+        <div>
+          <div class="drop" id="dropZone">
+            <span class="ico-sq" style="width:44px;height:44px;margin:0 auto 12px"><svg style="width:20px;height:20px"><use href="#i-up"/></svg></span>
+            <h3 style="font-size:17px">Drop your resume here</h3>
+            <p class="muted" style="font-size:13.5px;margin-top:5px">PDF or DOCX, up to 5 MB. In this prototype nothing leaves your browser.</p>
+            <button class="btn btn-primary" style="margin-top:14px" onclick="runAn()">Choose a file</button>
+            <div class="scan" id="scanBar" style="display:none"><i></i></div>
+            <p class="muted" id="scanMsg" style="font-size:12.5px;margin-top:9px;display:none"></p>
+          </div>
+          <div class="panel" style="margin-top:14px"><div class="sec-t ruled">Or use a saved resume</div><div id="anSaved"></div></div>
+        </div>
+        <div class="panel">
+          <div class="sec-t ruled">What gets checked</div>
+          <div class="stack" style="gap:12px">
+            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Parsing</b><div class="muted" style="font-size:12.5px">Columns, tables, graphics and fonts that break extraction.</div></div></div>
+            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Content strength</b><div class="muted" style="font-size:12.5px">Bullets with no verb, no number, or no outcome.</div></div></div>
+            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Keyword coverage</b><div class="muted" style="font-size:12.5px">Against live postings for your target role.</div></div></div>
+            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Completeness</b><div class="muted" style="font-size:12.5px">Sections a reviewer expects and yours is missing.</div></div></div>
+          </div>
+          <div class="note" style="margin-top:16px">Scored against your current target role. Change the role and the same file scores differently — that is the point.</div>
+        </div>
+      </div>
+    </div>
+    <div id="anResult" style="display:none"></div>
+  </section>
+
+  <section class="page" id="p-myresumes">
+    <div class="page-head"><div><h1>My resumes</h1><p>Three versions, each pointed at a different set of postings.</p></div>
+      <button class="btn btn-primary btn-sm" data-go="builder"><svg><use href="#i-plus"/></svg>New resume</button></div>
+    <div id="resList"></div>
+  </section>
+
+  <section class="page" id="p-jd">
+    <div class="page-head"><div><h1>Job description analyser</h1><p>Paste a posting and get the structure behind it: what's required, what's optional, and the words the filter looks for.</p></div>
+      <button class="btn btn-sm" id="jdBtn" style="display:none" onclick="resetJD()">Analyse another</button></div>
+    <div id="jdInput">
+      <div class="grid g-2-1">
+        <div class="panel">
+          <div class="between ruled"><div class="sec-t">Job description</div><span class="muted" style="font-size:12.5px">Paste, or drop a PDF</span></div>
+          <textarea class="inp" id="jdText" rows="15"></textarea>
+          <div class="row" style="margin-top:12px"><button class="btn btn-primary" onclick="runJD()"><svg><use href="#i-spark"/></svg>Analyse posting</button>
+          <button class="btn" onclick="toast('Upload','Drop a PDF or DOCX of the posting.')"><svg><use href="#i-up"/></svg>Upload</button></div>
+        </div>
+        <div class="panel"><div class="sec-t ruled">Recently analysed</div><div id="jdRecent"></div></div>
+      </div>
+    </div>
+    <div id="jdResult" style="display:none"></div>
+  </section>
+
+  <section class="page" id="p-keywords">
+    <div class="page-head"><div><h1>Keyword suggester</h1><p id="kwSub"></p></div>
+      <button class="btn btn-primary btn-sm" onclick="toast('Copied','Add each one only where you can defend it.')">Copy all</button></div>
+    <div id="kwBody"></div>
+  </section>
+
+  <section class="page" id="p-match">
+    <div class="page-head"><div><h1>Job match</h1><p id="matchSub"></p></div>
+      <div class="row"><button class="btn btn-sm" data-go="jd">Change posting</button><button class="btn btn-primary btn-sm" data-go="builder">Fix in builder</button></div></div>
+    <div id="matchBody"></div>
+  </section>
+
+  <section class="page" id="p-gap">
+    <div class="page-head"><div><h1>Skill gap</h1><p id="gapSub"></p></div>
+      <div class="row">
+        <select class="inp" id="gapRole" style="width:auto;height:33px;font-size:13.5px" onchange="switchRoleFromGap()"></select>
+        <select class="inp" style="width:auto;height:33px;font-size:13.5px" onchange="toast('Seniority changed','Required levels re-scored for this band.')"><option>Mid-level</option><option>Entry</option><option>Senior</option></select>
+      </div></div>
+    <div id="gapBody"></div>
+  </section>
+
+  <section class="page" id="p-roadmap">
+    <div class="page-head"><div><h1>Your roadmap</h1><p id="rmSub"></p></div>
+      <div class="row"><button class="btn btn-sm" onclick="toast('Plan rebuilt','Re-ordered around your biggest gap.')"><svg><use href="#i-spark"/></svg>Rebuild</button>
+      <button class="btn btn-primary btn-sm" onclick="jumpNow()">Jump to this week</button></div></div>
+    <div class="grid g4" style="margin-bottom:20px" id="rmStats"></div>
+    <div class="rm" id="rmList"></div>
+  </section>
+
+  <section class="page" id="p-study">
+    <div class="page-head"><div><h1>Study materials</h1><p>Everything here maps to a skill in your gap report. Nothing generic.</p></div>
+      <button class="btn btn-sm" onclick="toast('Saved','Added to your own list.')"><svg><use href="#i-plus"/></svg>Add your own</button></div>
+    <div class="panel" style="margin-bottom:16px">
+      <div class="grid" style="grid-template-columns:1.4fr 1fr 1fr 1fr;gap:11px">
+        <div class="searchbox" style="max-width:none"><svg><use href="#i-search"/></svg><input class="inp" id="stSearch" placeholder="Search the library…"></div>
+        <select class="inp" id="stSkill"></select>
+        <select class="inp" id="stDiff"><option value="">Any difficulty</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
+        <select class="inp" id="stDur"><option value="">Any length</option><option>Under 1 hour</option><option>1–4 hours</option><option>Over 4 hours</option></select>
+      </div>
+      <div class="tabs" style="margin:14px 0 0;border-bottom:0" id="stTabs">
+        <button class="tab active" data-t="rec">Recommended</button><button class="tab" data-t="video">Videos</button>
+        <button class="tab" data-t="course">Courses</button><button class="tab" data-t="docs">Documentation</button>
+        <button class="tab" data-t="article">Articles</button><button class="tab" data-t="practice">Practice</button>
+        <button class="tab" data-t="notes">Notes</button><button class="tab" data-t="project">Projects</button>
+      </div>
+    </div>
+    <div class="between" style="margin-bottom:12px"><span class="muted" style="font-size:13px" id="stCount"></span>
+      <button class="btn btn-quiet btn-sm" onclick="clearStudy()">Clear filters</button></div>
+    <div class="res-grid" id="stGrid"></div>
+    <div class="empty" id="stEmpty" style="display:none"><h3>Nothing matches those filters</h3><p>Widen the difficulty or clear the search to see the whole library.</p></div>
+  </section>
+
+  <section class="page" id="p-projects">
+    <div class="page-head"><div><h1>Projects worth doing</h1><p id="pjSub"></p></div>
+      <div class="chips" id="pjFilters">
+        <button class="chip on" data-d="all">All</button><button class="chip" data-d="Beginner">Beginner</button>
+        <button class="chip" data-d="Intermediate">Intermediate</button><button class="chip" data-d="Advanced">Advanced</button></div></div>
+    <div class="grid g3" style="margin-bottom:16px" id="pjStats"></div>
+    <div class="res-grid" id="pjGrid"></div>
+  </section>
+
+  <section class="page" id="p-progress">
+    <div class="page-head"><div><h1>Progress</h1><p id="prSub"></p></div>
+      <div class="chips"><button class="chip" onclick="chipRow(this);renderProgress('w')">Weekly</button><button class="chip on" onclick="chipRow(this);renderProgress('m')">Monthly</button></div></div>
+    <div id="prBody"></div>
+  </section>
+
+  <section class="page" id="p-settings">
+    <div class="page-head"><div><h1>Settings</h1><p>Account, preferences, notifications and how this looks.</p></div>
+      <button class="btn btn-primary btn-sm" onclick="toast('Saved','Changes apply from your next session.')">Save changes</button></div>
+    <div class="tabs" id="setTabs">
+      <button class="tab active" data-s="account">Account</button><button class="tab" data-s="prefs">Preferences</button>
+      <button class="tab" data-s="notif">Notifications</button><button class="tab" data-s="appear">Appearance</button><button class="tab" data-s="plan">Plan &amp; data</button></div>
+
+    <div class="setpane" id="s-account"><div class="grid g-2-1"><div class="stack">
+      <div class="panel"><div class="sec-t ruled">Account details</div>
+        <div class="f2" id="setAcct"></div></div>
+      <div class="panel"><div class="sec-t">Password</div><div class="sec-sub" style="margin-bottom:12px">Last changed four months ago</div>
+        <div class="f2"><label class="field"><span>New password</span><input class="inp" type="password" placeholder="At least 8 characters"></label>
+        <label class="field"><span>Confirm</span><input class="inp" type="password"></label></div>
+        <button class="btn btn-sm" style="margin-top:12px" onclick="toast('Password updated','You stay signed in here.')">Update password</button></div>
+      </div>
+      <div class="panel"><div class="sec-t ruled">Connected accounts</div>
+        <div class="list-row"><span class="ico-sq b"><svg><use href="#i-link"/></svg></span><div style="flex:1"><b style="font-size:13.5px">LinkedIn</b><div class="muted" style="font-size:12px">Not connected</div></div><button class="btn btn-sm" onclick="toast('Connected','We will read your headline and roles.')">Connect</button></div>
+        <div class="list-row"><span class="ico-sq"><svg><use href="#i-cal"/></svg></span><div style="flex:1"><b style="font-size:13.5px">Calendar</b><div class="muted" style="font-size:12px">Not connected</div></div><button class="btn btn-sm" onclick="toast('Connected','Study blocks will appear on your calendar.')">Connect</button></div>
+        <div class="list-row"><span class="ico-sq"><svg><use href="#i-file"/></svg></span><div style="flex:1"><b style="font-size:13.5px">Google Drive</b><div class="muted" style="font-size:12px">Not connected</div></div><button class="btn btn-sm" onclick="toast('Connected','Resumes will save to Drive.')">Connect</button></div>
+      </div></div></div>
+
+    <div class="setpane" id="s-prefs" style="display:none"><div class="grid g2">
+      <div class="panel"><div class="sec-t ruled">Learning</div><div class="stack" style="gap:13px">
+        <label class="field"><span>Target role</span><select class="inp" id="setRole" onchange="switchRole(this.value)"></select></label>
+        <label class="field"><span>Weekly study target</span><select class="inp"><option>6 hours</option><option>3 hours</option><option>10 hours</option><option>15 hours</option></select></label>
+        <label class="field"><span>What you learn best from</span><select class="inp"><option>Doing the work first</option><option>Video courses</option><option>Reading and documentation</option><option>Practice problems</option></select></label>
+        <div class="between"><div><b style="font-size:13.5px">Rebuild the plan weekly</b><div class="muted" style="font-size:12px">Re-orders weeks every Sunday</div></div><button class="switch" role="switch" aria-checked="true" onclick="flip(this)"></button></div>
+        <div class="between"><div><b style="font-size:13.5px">Include stretch items</b><div class="muted" style="font-size:12px">Adds optional advanced work</div></div><button class="switch" role="switch" aria-checked="false" onclick="flip(this)"></button></div>
+      </div></div>
+      <div class="panel"><div class="sec-t ruled">Job search</div><div class="stack" style="gap:13px">
+        <label class="field"><span>Locations</span><input class="inp" id="setLoc"></label>
+        <label class="field"><span>Show roles above</span><select class="inp"><option>65% match</option><option>50% match</option><option>80% match</option></select></label>
+        <div class="between"><div><b style="font-size:13.5px">Weekly job digest</b><div class="muted" style="font-size:12px">Five roles above your threshold</div></div><button class="switch" role="switch" aria-checked="true" onclick="flip(this)"></button></div>
+        <div class="between"><div><b style="font-size:13.5px">Tailor a resume per posting</b><div class="muted" style="font-size:12px">Creates a variant draft automatically</div></div><button class="switch" role="switch" aria-checked="false" onclick="flip(this)"></button></div>
+      </div></div></div></div>
+
+    <div class="setpane" id="s-notif" style="display:none"><div class="panel">
+      <div class="sec-t">Notifications</div><div class="sec-sub" style="margin-bottom:8px">What's worth interrupting you for</div>
+      <div id="notifList"></div></div></div>
+
+    <div class="setpane" id="s-appear" style="display:none"><div class="grid g2">
+      <div class="panel"><div class="sec-t ruled">Theme</div>
+        <div class="f2">
+          <button class="tpl on" id="thLight" onclick="setTheme('light')"><span class="prev" style="background:#F2F1E9"><b style="background:#22543C"></b><i style="background:#D6D3C4"></i><i class="s" style="background:#D6D3C4"></i></span><span>Paper</span><small>Default</small></button>
+          <button class="tpl" id="thDark" onclick="setTheme('dark')"><span class="prev" style="background:#1D1F17"><b style="background:#7FC79E"></b><i style="background:#33362A"></i><i class="s" style="background:#33362A"></i></span><span>Night</span><small>Low light</small></button>
+        </div>
+        <div class="stack" style="gap:13px;margin-top:16px">
+          <div class="between"><div><b style="font-size:13.5px">Ruled background</b><div class="muted" style="font-size:12px">The grid behind each page</div></div><button class="switch" role="switch" aria-checked="true" onclick="flip(this);toggleGrid(this)"></button></div>
+          <div class="between"><div><b style="font-size:13.5px">Reduce motion</b><div class="muted" style="font-size:12px">Turns off bar animations</div></div><button class="switch" role="switch" aria-checked="false" onclick="flip(this)"></button></div>
+        </div></div>
+      <div class="panel"><div class="sec-t ruled">What's on the dashboard</div><div id="dashToggles"></div></div>
+    </div></div>
+
+    <div class="setpane" id="s-plan" style="display:none"><div class="grid g-2-1">
+      <div class="panel"><div class="sec-t">Your plan</div><div class="sec-sub" style="margin-bottom:13px">Free, renews monthly</div>
+        <div class="f2">
+          <div style="border:1.5px solid var(--rule);border-radius:var(--r);padding:15px;box-shadow:var(--hard-sm)">
+            <div class="between"><b>Free</b><span class="tag g">Current</span></div>
+            <div class="num" style="font-size:24px;margin:7px 0">₹0</div>
+            <div class="muted" style="font-size:12.5px;line-height:1.75">5 resume analyses a month<br>1 active roadmap<br>Community resources</div></div>
+          <div style="border:1.5px solid var(--line);border-radius:var(--r);padding:15px">
+            <div class="between"><b>Pro</b></div>
+            <div class="num" style="font-size:24px;margin:7px 0">₹749<span style="font-size:13px;font-family:var(--font-b);color:var(--ink-3)">/mo</span></div>
+            <div class="muted" style="font-size:12.5px;line-height:1.75">Unlimited analyses<br>3 parallel roadmaps<br>Interview question bank</div>
+            <button class="btn btn-primary btn-sm btn-block" style="margin-top:11px" onclick="openModal('mUpgrade')">Upgrade</button></div>
+        </div></div>
+      <div class="panel"><div class="sec-t ruled">Your data</div><div class="stack" style="gap:10px">
+        <button class="btn btn-block" onclick="toast('Export started','Resumes, roadmap and progress are being packed.')"><svg><use href="#i-dl"/></svg>Export everything</button>
+        <button class="btn btn-block" onclick="toast('Progress reset','Your roadmap is back to week one.')">Reset progress</button>
+        <div style="border:1.5px solid var(--clay);border-radius:var(--r);padding:13px;background:var(--clay-soft);margin-top:4px">
+          <b style="font-size:13.5px;color:var(--clay)">Delete account</b>
+          <p style="font-size:12.5px;color:var(--ink-2);margin-top:3px">Removes your resumes, roadmap and history. This cannot be undone.</p>
+          <button class="btn btn-sm" style="background:var(--clay);color:#fff;border-color:var(--clay);margin-top:10px" onclick="openModal('mDelete')">Delete account</button></div>
+      </div></div></div></div>
+  </section>
+
+  </div></div></div></div>
+
+<!-- MODALS -->
+<div class="overlay" id="mAsk" onclick="bgClose(event)"><div class="modal">
+  <div class="modal-h"><div><h3 style="font-size:18px">Ask your coach</h3><p class="muted" style="font-size:13px;margin-top:2px">It has read your gap report and your plan.</p></div>
+    <button class="icon-btn" onclick="closeModal('mAsk')"><svg><use href="#i-x"/></svg></button></div>
+  <div class="modal-b"><div id="coachQs" class="stack" style="gap:7px"></div>
+    <div id="coachOut" style="display:none;margin-top:13px;font-size:13.5px;line-height:1.65;border:1.5px solid var(--line);border-radius:var(--r);padding:13px"></div>
+    <label class="field" style="margin-top:13px"><span>Or type a question</span><textarea class="inp" rows="2" placeholder="Ask anything about your plan…"></textarea></label></div>
+  <div class="modal-f"><button class="btn" onclick="closeModal('mAsk')">Close</button><button class="btn btn-primary" onclick="askCoach()">Ask</button></div>
+</div></div>
+
+<div class="overlay" id="mUpgrade" onclick="bgClose(event)"><div class="modal" style="max-width:580px">
+  <div class="modal-h"><div><h3 style="font-size:18px">Compare plans</h3><p class="muted" style="font-size:13px;margin-top:2px">Prototype only — nothing is charged.</p></div>
+    <button class="icon-btn" onclick="closeModal('mUpgrade')"><svg><use href="#i-x"/></svg></button></div>
+  <div class="modal-b"><table><thead><tr><th>Feature</th><th>Free</th><th>Pro</th></tr></thead><tbody>
+    <tr><td>Resume analyses</td><td>5 a month</td><td><b>Unlimited</b></td></tr>
+    <tr><td>Active roadmaps</td><td>1</td><td><b>3</b></td></tr>
+    <tr><td>Job match reports</td><td>3 a month</td><td><b>Unlimited</b></td></tr>
+    <tr><td>Interview question bank</td><td>—</td><td><b>Included</b></td></tr>
+    <tr><td>Resume templates</td><td>4</td><td><b>12</b></td></tr></tbody></table></div>
+  <div class="modal-f"><button class="btn" onclick="closeModal('mUpgrade')">Stay on Free</button>
+    <button class="btn btn-primary" onclick="closeModal('mUpgrade');toast('Pro enabled','Prototype mode — no payment taken.')">Upgrade</button></div>
+</div></div>
+
+<div class="overlay" id="mAddSkill" onclick="bgClose(event)"><div class="modal" style="max-width:420px">
+  <div class="modal-h"><h3 style="font-size:18px">Add a skill</h3><button class="icon-btn" onclick="closeModal('mAddSkill')"><svg><use href="#i-x"/></svg></button></div>
+  <div class="modal-b"><label class="field"><span>Skill</span><input class="inp" id="newSkillName" placeholder="e.g. Primavera P6"></label>
+    <label class="field" style="margin-top:11px"><span>Where you are with it</span><select class="inp" id="newSkillLvl">
+      <option value="25">Read about it</option><option value="50">Used it on one job</option><option value="75">Use it regularly</option><option value="92">Could teach it</option></select></label></div>
+  <div class="modal-f"><button class="btn" onclick="closeModal('mAddSkill')">Cancel</button><button class="btn btn-primary" onclick="addSkill()">Add</button></div>
+</div></div>
+
+<div class="overlay" id="mDelete" onclick="bgClose(event)"><div class="modal" style="max-width:420px">
+  <div class="modal-h"><h3 style="font-size:18px">Delete your account?</h3><button class="icon-btn" onclick="closeModal('mDelete')"><svg><use href="#i-x"/></svg></button></div>
+  <div class="modal-b"><p style="font-size:13.5px;color:var(--ink-2)">This removes your resumes, your roadmap and everything you have tracked. Type <b>delete</b> to confirm.</p>
+    <input class="inp" style="margin-top:11px" placeholder="delete"></div>
+  <div class="modal-f"><button class="btn" onclick="closeModal('mDelete')">Keep my account</button>
+    <button class="btn" style="background:var(--clay);color:#fff;border-color:var(--clay)" onclick="closeModal('mDelete');toast('Nothing deleted','This is a prototype. Your data is fine.')">Delete</button></div>
+</div></div>
+
+<div class="overlay" id="mPreview" onclick="bgClose(event)"><div class="modal" style="max-width:740px;background:transparent;border:0;box-shadow:none">
+  <div class="row" style="justify-content:flex-end;margin-bottom:9px"><button class="btn btn-sm" onclick="closeModal('mPreview')"><svg><use href="#i-x"/></svg>Close</button></div>
+  <div class="paper" id="previewPaper"></div>
+</div></div>
+<script src="app.js"></script>
+</body>
+</html>
