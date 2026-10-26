@@ -1007,22 +1007,99 @@ function showAuth(w){document.body.classList.remove('in-app');$$('.mkview').forE
 
 /* ================= role picker ================= */
 let pickKey='backend', pickThenEnter=true;
-function openRolePicker(enter){
-  pickThenEnter=enter!==false; pickKey=RK;
-  document.body.classList.remove('in-app');
-  $$('.mkview').forEach(v=>v.style.display='none'); $('#v-role').style.display=''; window.scrollTo(0,0);
-  $('#rolePicker').innerHTML=TRACKS.map(t=>`
-    <div style="margin-bottom:20px">
-      <div class="row" style="gap:9px;margin-bottom:10px;border-bottom:1.5px solid var(--rule);padding-bottom:7px">
-        <span class="ico-sq"><svg><use href="#${t.i}"/></svg></span>
-        <div><b style="font-family:var(--font-d);font-size:15px">${t.k}</b><div class="muted" style="font-size:12.5px">${t.d}</div></div>
-      </div>
-      <div class="rolegrid">${Object.entries(ROLES).filter(([,r])=>r.track===t.k).map(([k,r])=>`
-        <button class="rolecard ${k===pickKey?'on':''}" data-rk="${k}" onclick="pickRole('${k}')">
-          <b>${r.name}</b><small>${r.blurb}</small>
-          <div class="row" style="gap:6px;margin-top:9px"><span class="tag">${r.level}</span><span class="tag">${r.posts} postings</span></div>
-        </button>`).join('')}</div>
-    </div>`).join('');
+
+const API_BASE_URL = "http://127.0.0.1:8000";
+
+async function openRolePicker(enter) {
+    pickThenEnter = enter !== false;
+    pickKey = RK;
+
+    document.body.classList.remove("in-app");
+    $$(".mkview").forEach(v => v.style.display = "none");
+    $("#v-role").style.display = "";
+    window.scrollTo(0, 0);
+
+    const picker = $("#rolePicker");
+    picker.innerHTML =
+        '<p class="muted">Loading job roles...</p>';
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/catalog`
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `Backend returned status ${response.status}`
+            );
+        }
+
+        const catalog = await response.json();
+        const tracks = catalog.tracks;
+        const roles = catalog.roles;
+
+        picker.innerHTML = tracks.map(track => `
+            <div style="margin-bottom:20px">
+                <div class="row"
+                     style="gap:9px;margin-bottom:10px;
+                     border-bottom:1.5px solid var(--rule);
+                     padding-bottom:7px">
+
+                    <span class="ico-sq">
+                        <svg>
+                            <use href="#${track.i}"></use>
+                        </svg>
+                    </span>
+
+                    <div>
+                        <b style="font-family:var(--font-d);
+                                  font-size:15px">
+                            ${track.k}
+                        </b>
+                        <div class="muted" style="font-size:12.5px">
+                            ${track.d}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rolegrid">
+                    ${roles
+                        .filter(role => role.track === track.k)
+                        .map(role => `
+                            <button
+                                class="rolecard ${
+                                    role.key === pickKey ? "on" : ""
+                                }"
+                                data-rk="${role.key}"
+                                onclick="pickRole('${role.key}')">
+
+                                <b>${role.name}</b>
+                                <small>${role.blurb}</small>
+
+                                <div class="row"
+                                     style="gap:6px;margin-top:9px">
+                                    <span class="tag">${role.level}</span>
+                                    <span class="tag">${role.posts} postings</span>
+                                </div>
+                            </button>
+                        `).join("")}
+                </div>
+            </div>
+        `).join("");
+
+    } catch (error) {
+        console.error("Failed to load job roles:", error);
+
+        picker.innerHTML = `
+            <div class="track-card">
+                <h3>Couldn't load job roles</h3>
+                <p class="muted">
+                    Check that the FastAPI server is running,
+                    then refresh this page.
+                </p>
+            </div>
+        `;
+    }
 }
 function pickRole(k){pickKey=k;$$('.rolecard').forEach(c=>c.classList.toggle('on',c.dataset.rk===k))}
 function confirmRole(){
