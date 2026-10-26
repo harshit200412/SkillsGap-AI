@@ -126,7 +126,59 @@
   <div class="mk mk-sec" id="inside">
     <h2>What's in the notebook</h2>
     <div class="cols3">
-      <div class="track-card"><h3>Resume builder and analyser</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Four print-ready templates, a live preview, and an honest score with the bullets rewritten for you.</p></div>
+      
+<div class="track-card">
+  <h3>Resume builder and analyser</h3>
+
+  <p class="muted" style="font-size:13.5px;margin-top:6px">
+    Upload your resume to discover your existing skills, missing skills,
+    and readiness for your target role.
+  </p>
+
+  <form id="resumeAnalysisForm" style="margin-top:16px">
+    <label for="resumeRole">Target job role</label>
+    <select id="resumeRole" class="inp" required>
+      <option value="backend">Backend Engineer</option>
+      <option value="analyst">Data Analyst</option>
+      <option value="pm">Product Manager</option>
+      <option value="marketing">Marketing Manager</option>
+      <option value="finance">Financial Analyst</option>
+      <option value="ops">Operations &amp; Supply Chain Manager</option>
+      <option value="civil">Civil / Site Engineer</option>
+      <option value="mech">Mechanical Design Engineer</option>
+    </select>
+
+    <label for="resumeFile" style="display:block;margin-top:12px">
+      Upload resume (PDF or DOCX, max 5 MB)
+    </label>
+    <input
+      id="resumeFile"
+      class="inp"
+      type="file"
+      accept=".pdf,.docx"
+      required
+    />
+
+    <button
+      class="btn btn-primary"
+      type="submit"
+      style="margin-top:14px"
+      id="analyzeResumeBtn"
+    >
+      Analyse my skills
+    </button>
+  </form>
+
+  <div id="resumeAnalysisStatus"
+       class="muted"
+       role="status"
+       style="margin-top:12px"></div>
+
+  <div id="resumeAnalysisResults"
+       style="margin-top:16px"
+       aria-live="polite"></div>
+</div>
+
       <div class="track-card"><h3>Job description analyser</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Paste a posting; get the required skills, the preferred ones, the duties and the words the filter looks for.</p></div>
       <div class="track-card"><h3>Skill gap and roadmap</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Current level against the hiring bar, then a dated plan with resources and portfolio work.</p></div>
       <div class="track-card"><h3>Study library</h3><p class="muted" style="font-size:13.5px;margin-top:6px">Courses, docs, practice sets and your own notes — filtered to the skills you're actually short on.</p></div>
@@ -300,7 +352,9 @@
 
   <section class="page" id="p-builder">
     <div class="page-head"><div><h1>Resume builder</h1><p>Edit on the left, watch the page rebuild on the right. All four templates are single-column and parse cleanly.</p></div>
-      <div class="row"><button class="btn btn-sm" onclick="toast('Saved','Stored as a new version.')"><svg><use href="#i-check"/></svg>Save</button>
+      <div class="row"><button class="btn btn-sm" onclick="saveResume()">
+  <svg><use href="#i-check"/></svg>Save
+</button>
       <button class="btn btn-primary btn-sm" onclick="downloadResume()"><svg><use href="#i-dl"/></svg>Download PDF</button></div></div>
     <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);gap:20px" id="builderGrid">
       <div>
@@ -326,34 +380,59 @@
   </section>
 
   <section class="page" id="p-analyzer">
-    <div class="page-head"><div><h1>Resume analyser</h1><p>Scored the way a parser reads it, then the way a hiring manager does.</p></div>
-      <button class="btn btn-sm" id="reBtn" style="display:none" onclick="resetAn()">Analyse another file</button></div>
-    <div id="anUpload">
-      <div class="grid g-2-1">
-        <div>
-          <div class="drop" id="dropZone">
-            <span class="ico-sq" style="width:44px;height:44px;margin:0 auto 12px"><svg style="width:20px;height:20px"><use href="#i-up"/></svg></span>
-            <h3 style="font-size:17px">Drop your resume here</h3>
-            <p class="muted" style="font-size:13.5px;margin-top:5px">PDF or DOCX, up to 5 MB. In this prototype nothing leaves your browser.</p>
-            <button class="btn btn-primary" style="margin-top:14px" onclick="runAn()">Choose a file</button>
-            <div class="scan" id="scanBar" style="display:none"><i></i></div>
-            <p class="muted" id="scanMsg" style="font-size:12.5px;margin-top:9px;display:none"></p>
-          </div>
-          <div class="panel" style="margin-top:14px"><div class="sec-t ruled">Or use a saved resume</div><div id="anSaved"></div></div>
-        </div>
-        <div class="panel">
-          <div class="sec-t ruled">What gets checked</div>
-          <div class="stack" style="gap:12px">
-            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Parsing</b><div class="muted" style="font-size:12.5px">Columns, tables, graphics and fonts that break extraction.</div></div></div>
-            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Content strength</b><div class="muted" style="font-size:12.5px">Bullets with no verb, no number, or no outcome.</div></div></div>
-            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Keyword coverage</b><div class="muted" style="font-size:12.5px">Against live postings for your target role.</div></div></div>
-            <div class="row" style="align-items:flex-start;gap:10px"><span class="ico-sq g"><svg><use href="#i-check"/></svg></span><div><b style="font-size:13.5px">Completeness</b><div class="muted" style="font-size:12.5px">Sections a reviewer expects and yours is missing.</div></div></div>
-          </div>
-          <div class="note" style="margin-top:16px">Scored against your current target role. Change the role and the same file scores differently — that is the point.</div>
-        </div>
-      </div>
-    </div>
-    <div id="anResult" style="display:none"></div>
+    
+<div class="page-head">
+  <div>
+    <h1>Resume Analyser</h1>
+    <p>Upload your resume to identify matched skills and skills to develop.</p>
+  </div>
+</div>
+
+<div class="track-card">
+  <form id="sidebarResumeAnalysisForm">
+    <label for="sidebarResumeRole">Target job role</label>
+    <select id="sidebarResumeRole" class="inp" required>
+      <option value="backend">Backend Engineer</option>
+      <option value="analyst">Data Analyst</option>
+      <option value="pm">Product Manager</option>
+      <option value="marketing">Marketing Manager</option>
+      <option value="finance">Financial Analyst</option>
+      <option value="ops">Operations &amp; Supply Chain Manager</option>
+      <option value="civil">Civil / Site Engineer</option>
+      <option value="mech">Mechanical Design Engineer</option>
+    </select>
+
+    <label for="sidebarResumeFile" style="display:block;margin-top:16px">
+      Upload resume (PDF or DOCX, maximum 5 MB)
+    </label>
+    <input
+      id="sidebarResumeFile"
+      class="inp"
+      type="file"
+      accept=".pdf,.docx"
+      required
+    />
+
+    <button
+      class="btn btn-primary"
+      type="submit"
+      id="sidebarAnalyzeResumeBtn"
+      style="margin-top:14px"
+    >
+      Analyse my resume
+    </button>
+  </form>
+
+  <p id="sidebarResumeAnalysisStatus"
+     class="muted"
+     role="status"
+     style="margin-top:12px"></p>
+
+  <div id="sidebarResumeAnalysisResults"
+       style="margin-top:16px"
+       aria-live="polite"></div>
+</div>
+
   </section>
 
   <section class="page" id="p-myresumes">

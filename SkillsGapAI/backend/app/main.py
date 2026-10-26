@@ -6,6 +6,15 @@ from sqlalchemy.orm import Session
 from backend.app import models
 from backend.app.database import Base, engine, SessionLocal
 from backend.app.roles_data import TRACKS
+from fastapi import FastAPI, HTTPException, File, Form, UploadFile
+from io import BytesIO
+from pathlib import Path
+
+import fitz
+from docx import Document
+
+from backend.app.skill_analyzer import analyze_resume
+
 
 app = FastAPI(title="SkillGap AI")
 
@@ -98,3 +107,74 @@ def get_role(role_key: str):
     finally:
         db.close()
  
+ 
+@app.post("/api/analyze-resume")
+async def analyze_uploaded_resume(
+    file: UploadFile = File(...),
+    role_key: str = Form(...)
+):
+    allowed_extensions = {".pdf", ".docx"}
+    extension = Path(file.filename or "").suffix.lower()
+
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload a PDF or DOCX resume."
+        )
+
+    # Check that the selected role exists.
+    db: Session = SessionLocal()
+    try:
+        role = db.query(models.JobRole).filter_by(
+            key=role_key
+        ).first()
+
+        if role is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Job role not found."
+            )
+    finally:
+        db.close()
+
+    # Read at most 5 MB plus one byte to detect oversized files.
+    file_bytes = await file.read(5 * 1024 * 1024 + 1)
+
+    if len(file_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="Resume must be 5 MB or smaller."
+        )
+
+    try:
+        if extension == ".pdf":
+            with fitz.open(
+                stream=file_bytes,
+                filetype="pdf"
+            ) as pdf:
+                text = "\n".join(
+                    page.get_text() for page in pdf
+                )
+        else:
+            document = Document(BytesIO(file_bytes))
+            text = "\n".join(
+                paragraph.text
+                for paragraph in document.paragraphs
+            )
+
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="The file could not be read. Please check it and try again."
+        )
+
+    if not text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No readable text found. Scanned resumes need OCR support."
+        )
+
+    result = analyze_resume(text, role_key)
+    result["role_name"] = role.name
+
+    return result

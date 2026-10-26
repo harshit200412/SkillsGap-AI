@@ -7,6 +7,26 @@ const TRACKS=[
  {k:'Core engineering',i:'i-build',d:'Civil, mechanical and site-based roles'}
 ];
 
+
+async function fetchJobRoles() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/roles`);
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch job roles");
+        }
+
+        const roles = await response.json();
+
+        console.log("Job roles loaded from backend:", roles);
+
+        return roles;
+    } catch (error) {
+        console.error("Could not load job roles:", error);
+        return null;
+    }
+}
+
 const ROLES={
 
 /* ---------------- 1. BACKEND ENGINEER ---------------- */
@@ -1079,7 +1099,7 @@ async function openRolePicker(enter) {
                                 <div class="row"
                                      style="gap:6px;margin-top:9px">
                                     <span class="tag">${role.level}</span>
-                                    <span class="tag">${role.posts} postings</span>
+                                    <span class="tag">${role.level}</span>
                                 </div>
                             </button>
                         `).join("")}
@@ -1102,11 +1122,37 @@ async function openRolePicker(enter) {
     }
 }
 function pickRole(k){pickKey=k;$$('.rolecard').forEach(c=>c.classList.toggle('on',c.dataset.rk===k))}
-function confirmRole(){
-  const changed=pickKey!==RK; RK=pickKey; loadRole();
-  document.body.classList.add('in-app'); go('dashboard');
-  toast(changed?'Notebook rebuilt':'Welcome back',changed?`Everything is now scored against ${R.name}.`:`Picking up your ${R.name} plan.`);
+
+function confirmRole() {
+  if (!pickKey || !ROLES[pickKey]) {
+    console.error("Invalid role selected:", pickKey);
+    alert("Please select a job role first.");
+    return;
+  }
+
+  const selectedRole = pickKey;
+  const changed = selectedRole !== RK;
+
+  try {
+    RK = selectedRole;
+    loadRole();
+  } catch (error) {
+    console.error("Error loading the selected role:", error);
+    alert("There was a problem building your notebook. Press F12 and check Console.");
+    return;
+  }
+
+  document.body.classList.add("in-app");
+  go("dashboard");
+
+  toast(
+    changed ? "Notebook rebuilt" : "Welcome back",
+    changed
+      ? `Everything is now scored against ${R.name}.`
+      : `Picking up your ${R.name} plan.`
+  );
 }
+
 function switchRole(k){RK=k;loadRole();go($('.page.active').id.slice(2));toast('Role changed',`Scored against ${R.name} postings now.`)}
 function switchRoleFromGap(){switchRole($('#gapRole').value)}
 
@@ -1389,10 +1435,43 @@ $$('.tpl[data-tpl]').forEach(b=>b.addEventListener('click',()=>{
 }));
 
 /* ================= analyzer ================= */
-function renderSaved(){
-  $('#anSaved').innerHTML=`
-  <div class="list-row"><span class="ico-sq b"><svg><use href="#i-file"/></svg></span><div style="flex:1"><b style="font-size:13.5px">${R.name} — v3.pdf</b><div class="muted" style="font-size:12px">2 days ago · scored ${R.an.ats}</div></div><button class="btn btn-sm" onclick="runAn()">Analyse</button></div>
-  <div class="list-row"><span class="ico-sq"><svg><use href="#i-file"/></svg></span><div style="flex:1"><b style="font-size:13.5px">General — v2.pdf</b><div class="muted" style="font-size:12px">3 weeks ago · scored ${R.an.ats-11}</div></div><button class="btn btn-sm" onclick="runAn()">Analyse</button></div>`;
+
+function renderSaved() {
+  const container = document.getElementById('anSaved');
+
+  // The old demo analyser may no longer contain this element.
+  if (!container) return;
+
+  const resumes = typeof getSavedResumes === 'function'
+    ? getSavedResumes()
+    : [];
+
+  if (!resumes.length) {
+    container.innerHTML = `
+      <p class="muted" style="font-size:13px">
+        No saved resumes yet. Save a resume in the Resume Builder first.
+      </p>`;
+    return;
+  }
+
+  container.innerHTML = resumes.map(r => `
+    <div class="list-row">
+      <span class="ico-sq">
+        <svg><use href="#i-file"></use></svg>
+      </span>
+      <div style="flex:1">
+        <b style="font-size:13.5px">${esc(r.name || 'Saved resume')}</b>
+        <div class="muted" style="font-size:12px">
+          ${esc(r.roleName || 'Target role')} ·
+          ${new Date(r.savedAt).toLocaleDateString()}
+        </div>
+      </div>
+      <button class="btn btn-sm"
+        onclick="loadSavedResume(${Number(r.id)})">
+        Edit
+      </button>
+    </div>
+  `).join('');
 }
 function runAn(){
   const bar=$('#scanBar'),msg=$('#scanMsg');bar.style.display='block';msg.style.display='block';
@@ -1440,28 +1519,183 @@ function renderAnResult(){
       <button class="btn btn-primary btn-block" style="margin-top:12px" data-go="builder">Apply in the builder</button></div>
   </div>`;
 }
-function renderMyResumes(){
-  const a=R.an;
-  $('#resList').innerHTML=`
-  <div class="res-grid" style="margin-bottom:16px">
-    ${[[R.name+' — v3','Primary','g',a.ats,'2 days ago','Tuned for the postings you saved. Used in 11 applications.'],
-       ['General — v2','Archive','',a.ats-11,'3 weeks ago','Broader version for consultancies and campus-style listings.'],
-       ['Older draft','Draft','y',a.ats-24,'2 months ago','Started in August and never finished. Missing the projects section.']]
-      .map(r=>`<div class="res">
-        <div class="rtype"><svg><use href="#i-file"/></svg>${r[1]}</div>
-        <div class="between"><h3>${r[0]}</h3><span class="tag ${r[2]}">${r[1]}</span></div>
-        <p class="why">${r[5]}</p>
-        <div class="meta"><span>Score ${r[3]}</span><span>${r[4]}</span><span>1 page</span></div>
-        <div class="row"><button class="btn btn-sm" data-go="builder">Edit</button><button class="btn btn-quiet btn-sm" data-go="analyzer">Analyse</button>
-          <span class="spacer"></span><button class="btn btn-quiet btn-sm" onclick="downloadResume()"><svg><use href="#i-dl"/></svg></button></div>
-      </div>`).join('')}
-  </div>
-  <div class="panel"><div class="sec-t">Version history</div><div class="sec-sub" style="margin-bottom:11px">${R.name}</div>
-    <div class="tbl-wrap" style="border:0"><table><thead><tr><th>Version</th><th>Saved</th><th>Template</th><th>Score</th><th>Applications</th><th></th></tr></thead><tbody>
-      <tr><td><b>v3</b> <span class="tag g" style="margin-left:5px">Current</span></td><td>17 Sep 2026</td><td>Plain</td><td>${a.ats}</td><td>11</td><td style="text-align:right"><button class="btn btn-quiet btn-sm" onclick="openModal('mPreview')">View</button></td></tr>
-      <tr><td>v2</td><td>2 Sep 2026</td><td>Header</td><td>${a.ats-8}</td><td>6</td><td style="text-align:right"><button class="btn btn-quiet btn-sm" onclick="toast('Restored','v2 is your working draft.')">Restore</button></td></tr>
-      <tr><td>v1</td><td>14 Aug 2026</td><td>Minimal</td><td>${a.ats-16}</td><td>2</td><td style="text-align:right"><button class="btn btn-quiet btn-sm" onclick="toast('Restored','v1 is your working draft.')">Restore</button></td></tr>
-    </tbody></table></div></div>`;
+
+const SAVED_RESUMES_KEY = 'skillgap_ai_saved_resumes';
+
+function getSavedResumes() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(SAVED_RESUMES_KEY) || '[]'
+    );
+  } catch (error) {
+    console.error('Could not read saved resumes:', error);
+    return [];
+  }
+}
+
+function saveResume() {
+  const data = rd();
+
+  if (!data.name || !data.name.trim()) {
+    toast('Name required', 'Enter your name before saving.');
+    return;
+  }
+
+  const resumes = getSavedResumes();
+  const now = Date.now();
+
+  const version = resumes.filter(
+    r => r.roleKey === RK
+  ).length + 1;
+
+  const saved = {
+    id: now,
+    name: data.name.trim() + ' — v' + version,
+    roleKey: RK,
+    roleName: R.name,
+    template: $('#resumePaper').dataset.tpl || 'ats',
+    savedAt: new Date(now).toISOString(),
+    data: data
+  };
+
+  try {
+    resumes.unshift(saved);
+    localStorage.setItem(
+      SAVED_RESUMES_KEY,
+      JSON.stringify(resumes)
+    );
+
+    renderMyResumes();
+    renderSaved();
+
+    toast('Resume saved', saved.name + ' was saved successfully.');
+  } catch (error) {
+    console.error('Could not save resume:', error);
+    toast('Save failed', 'Browser storage may be full.');
+  }
+}
+
+function loadSavedResume(id) {
+  const saved = getSavedResumes().find(
+    r => r.id === Number(id)
+  );
+
+  if (!saved) {
+    toast('Resume not found', 'This saved version may have been deleted.');
+    return;
+  }
+
+  // Open the builder and create its form fields.
+  go('builder');
+  buildForm();
+
+  // Restore the saved form values.
+  $$('.rs').forEach(input => {
+    const key = input.dataset.k;
+
+    if (Object.prototype.hasOwnProperty.call(saved.data, key)) {
+      input.value = saved.data[key] ?? '';
+    }
+  });
+
+  // Restore the selected template.
+  const template = saved.template || 'ats';
+  $('#resumePaper').dataset.tpl = template;
+
+  $$('.tpl').forEach(button => {
+    button.classList.toggle(
+      'on',
+      button.dataset.tpl === template
+    );
+  });
+
+  renderResume();
+  toast('Resume loaded', 'You can now edit this saved version.');
+}
+
+function deleteSavedResume(id) {
+  const remaining = getSavedResumes().filter(
+    r => r.id !== Number(id)
+  );
+
+  try {
+    localStorage.setItem(
+      SAVED_RESUMES_KEY,
+      JSON.stringify(remaining)
+    );
+
+    renderMyResumes();
+    renderSaved();
+    toast('Resume deleted', 'The saved version was removed.');
+  } catch (error) {
+    console.error('Could not delete resume:', error);
+    toast('Delete failed', 'Could not update browser storage.');
+  }
+}
+
+
+function renderMyResumes() {
+  const resumes = getSavedResumes();
+  const list = $('#resList');
+
+  if (!resumes.length) {
+    list.innerHTML = `
+      <div class="panel" style="text-align:center;padding:32px">
+        <div class="sec-t">No saved resumes yet</div>
+        <p class="muted" style="margin:8px 0 16px">
+          Create your resume and click Save to store your first version.
+        </p>
+        <button class="btn btn-primary btn-sm" data-go="builder">
+          Create a resume
+        </button>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = `
+    <div class="res-grid" style="margin-bottom:16px">
+      ${resumes.map(r => `
+        <div class="res">
+          <div class="rtype">
+            <svg><use href="#i-file"/></svg>
+            Saved resume
+          </div>
+
+          <div class="between">
+            <h3>${esc(r.name || 'Untitled resume')}</h3>
+            <span class="tag g">${esc(r.template || 'ats')}</span>
+          </div>
+
+          <p class="why">
+            Target role: ${esc(r.roleName || 'Not specified')}
+          </p>
+
+          <div class="meta">
+            <span>Saved ${new Date(r.savedAt).toLocaleDateString()}</span>
+            <span>Version ${r.id}</span>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-sm"
+              onclick="loadSavedResume(${Number(r.id)})">
+              Edit
+            </button>
+
+            <button class="btn btn-quiet btn-sm"
+              onclick="loadSavedResume(${Number(r.id)});toast('Resume loaded','Review it before analysing.')">
+              Load to analyse
+            </button>
+
+            <span class="spacer"></span>
+
+            <button class="btn btn-quiet btn-sm"
+              onclick="deleteSavedResume(${Number(r.id)})">
+              Delete
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
 }
 
 /* ================= JD ================= */
@@ -1964,18 +2198,290 @@ $('#trackCards').innerHTML=TRACKS.map(t=>`<div class="track-card">
 </div>`).join('');
 
 /* ================= misc wiring ================= */
-$('#setTabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
-  $$('#setTabs .tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
-  $$('.setpane').forEach(p=>p.style.display=p.id==='s-'+t.dataset.s?'block':'none')});
-$('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){
-  go('study');$('#stSearch').value=e.target.value.trim();
-  $$('#stTabs .tab').forEach((x,i)=>x.classList.toggle('active',i===0));filterStudy();
-  toast('Searching the library','Showing matches for “'+e.target.value.trim()+'”.');e.target.value=''}});
-const dz=$('#dropZone');
-['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('hot')}));
-['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('hot')}));
-dz.addEventListener('drop',runAn);
+
+const setTabs = $('#setTabs');
+
+if (setTabs) {
+  setTabs.addEventListener('click', e => {
+    const t = e.target.closest('.tab');
+    if (!t) return;
+
+    $$('#setTabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+
+    $$('.setpane').forEach(p => {
+      p.style.display = p.id === 's-' + t.dataset.s ? 'block' : 'none';
+    });
+  });
+}
+
+const globalSearch = $('#globalSearch');
+
+if (globalSearch) {
+  globalSearch.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.value.trim()) {
+      const query = e.target.value.trim();
+
+      go('study');
+      $('#stSearch').value = query;
+
+      $$('#stTabs .tab').forEach((x, i) => {
+        x.classList.toggle('active', i === 0);
+      });
+
+      filterStudy();
+      toast('Searching the library', 'Showing matches for "' + query + '".');
+      e.target.value = '';
+    }
+  });
+}
+
+const dz = $('#dropZone');
+
+if (dz) {
+  ['dragenter', 'dragover'].forEach(ev => {
+    dz.addEventListener(ev, e => {
+      e.preventDefault();
+      dz.classList.add('hot');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(ev => {
+    dz.addEventListener(ev, e => {
+      e.preventDefault();
+      dz.classList.remove('hot');
+    });
+  });
+
+  dz.addEventListener('drop', e => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file) runAn(file);
+  });
+}
 
 /* ================= boot ================= */
 loadRole();
 renderGv();
+
+const dashboardResumeForm =
+  document.getElementById("resumeAnalysisForm");
+
+if (dashboardResumeForm) {
+  dashboardResumeForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById("resumeFile");
+    const roleKey = document.getElementById("resumeRole").value;
+    const status = document.getElementById("resumeAnalysisStatus");
+    const results = document.getElementById("resumeAnalysisResults");
+    const button = document.getElementById("analyzeResumeBtn");
+    const file = fileInput.files[0];
+
+    results.innerHTML = "";
+
+    if (!file) {
+      status.textContent = "Please select your resume first.";
+      return;
+    }
+
+    if (![".pdf", ".docx"].includes(
+      file.name.substring(file.name.lastIndexOf(".")).toLowerCase()
+    )) {
+      status.textContent = "Please upload a PDF or DOCX file.";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      status.textContent = "Your resume must be 5 MB or smaller.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("role_key", roleKey);
+
+    button.disabled = true;
+    status.textContent = "Analysing your resume...";
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/analyze-resume`,
+        {
+          method: "POST",
+          body: formData
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Resume analysis failed.");
+      }
+
+      const matched = data.matched_skills || [];
+      const missing = data.missing_skills || [];
+      const detected = data.detected_skills || [];
+
+      status.textContent = "Analysis completed successfully!";
+
+      const safeList = (items) =>
+        items.length
+          ? `<ul>${items.map(skill =>
+              `<li>${escapeHtml(skill)}</li>`
+            ).join("")}</ul>`
+          : "<p>None found.</p>";
+
+      results.innerHTML = `
+        <div class="track-card">
+          <h3>${escapeHtml(data.role_name || "Your target role")}</h3>
+          <p style="margin-top:10px">
+            Skill match:
+            <strong>${Number(data.match_percentage) || 0}%</strong>
+          </p>
+          <div style="height:8px;background:var(--rule);border-radius:8px;margin:10px 0 18px">
+            <div style="height:8px;width:${Math.min(100, Math.max(0, Number(data.match_percentage) || 0))}%;background:var(--accent, #16a34a);border-radius:8px"></div>
+          </div>
+          <h4>Matched skills (${matched.length})</h4>
+          ${safeList(matched)}
+          <h4 style="margin-top:14px">Skills to develop (${missing.length})</h4>
+          ${safeList(missing)}
+          <h4 style="margin-top:14px">Skills detected in your resume (${detected.length})</h4>
+          ${safeList(detected)}
+          <p class="muted" style="font-size:12px;margin-top:12px">
+            This is a basic text-based prototype. A skill may not be detected
+            if it is written differently in your resume.
+          </p>
+        </div>
+      `;
+    } catch (error) {
+      console.error("Resume analysis error:", error);
+      status.textContent = error.message ||
+        "Couldn't connect to the backend. Check that it is running.";
+    } finally {
+      button.disabled = false;
+    }
+    });
+}
+
+  
+const sidebarForm = document.getElementById("sidebarResumeAnalysisForm");
+
+if (sidebarForm) {
+  sidebarForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById("sidebarResumeFile");
+    const roleKey = document.getElementById("sidebarResumeRole").value;
+    const status = document.getElementById("sidebarResumeAnalysisStatus");
+    const results = document.getElementById("sidebarResumeAnalysisResults");
+    const button = document.getElementById("sidebarAnalyzeResumeBtn");
+    const file = fileInput.files[0];
+
+    results.innerHTML = "";
+
+    if (!file) {
+      status.textContent = "Please select your resume first.";
+      return;
+    }
+
+    const extension = file.name
+      .substring(file.name.lastIndexOf("."))
+      .toLowerCase();
+
+    if (![".pdf", ".docx"].includes(extension)) {
+      status.textContent = "Please upload a PDF or DOCX file.";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      status.textContent = "Your resume must be 5 MB or smaller.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("role_key", roleKey);
+
+    button.disabled = true;
+    status.textContent = "Analysing your resume...";
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/analyze-resume`,
+        {
+          method: "POST",
+          body: formData
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Resume analysis failed.");
+      }
+
+      const matched = data.matched_skills || [];
+      const missing = data.missing_skills || [];
+      const detected = data.detected_skills || [];
+
+      const safeList = (items) =>
+        items.length
+          ? `<ul>${items.map(skill =>
+              `<li>${escapeHtml(skill)}</li>`
+            ).join("")}</ul>`
+          : "<p>None found.</p>";
+
+      const percentage = Math.min(
+        100,
+        Math.max(0, Number(data.match_percentage) || 0)
+      );
+
+      status.textContent = "Analysis completed successfully!";
+
+      results.innerHTML = `
+        <div class="track-card">
+          <h3>${escapeHtml(data.role_name || "Your target role")}</h3>
+
+          <p style="margin-top:10px">
+            Skill match: <strong>${percentage}%</strong>
+          </p>
+
+          <div style="height:8px;background:var(--rule);border-radius:8px;margin:10px 0 18px">
+            <div style="height:8px;width:${percentage}%;background:var(--accent, #16a34a);border-radius:8px"></div>
+          </div>
+
+          <h4>Matched skills (${matched.length})</h4>
+          ${safeList(matched)}
+
+          <h4 style="margin-top:14px">Skills to develop (${missing.length})</h4>
+          ${safeList(missing)}
+
+          <h4 style="margin-top:14px">Detected skills (${detected.length})</h4>
+          ${safeList(detected)}
+
+          <p class="muted" style="font-size:12px;margin-top:12px">
+            Results depend on the skills detected in your resume text.
+          </p>
+        </div>
+      `;
+    } catch (error) {
+      console.error("Sidebar resume analysis error:", error);
+      status.textContent =
+        error.message || "Could not connect to the backend.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, function (char) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[char];
+  });
+}
