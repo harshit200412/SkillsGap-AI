@@ -178,3 +178,4 @@ async def analyze_uploaded_resume(
     result["role_name"] = role.name
 
     return result
+    

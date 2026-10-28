@@ -27,6 +27,51 @@ async function fetchJobRoles() {
     }
 }
 
+
+async function loadResumeRoleOptions() {
+    const select = document.getElementById("resumeRole");
+
+    if (!select) return;
+
+    // Keep the current options as a fallback if the API fails.
+    const fallbackOptions = Array.from(select.options).map(option => ({
+        value: option.value,
+        label: option.textContent
+    }));
+
+    const roles = await fetchJobRoles();
+
+    if (!Array.isArray(roles) || roles.length === 0) {
+        console.warn("Using existing job role options.");
+        return;
+    }
+
+    // Clear the dropdown and create a placeholder.
+    select.replaceChildren(
+        new Option("Select a target job role", "")
+    );
+
+    // Add every role received from PostgreSQL through the API.
+    roles.forEach(role => {
+        if (!role.key || !role.name) return;
+
+        const option = new Option(role.name, role.key);
+        select.add(option);
+    });
+
+    // If the API returned no valid roles, restore the old options.
+    if (select.options.length === 1) {
+        select.replaceChildren(
+            ...fallbackOptions.map(
+                option => new Option(option.label, option.value)
+            )
+        );
+    }
+
+    console.log("Resume role dropdown updated.");
+}
+
+
 const ROLES={
 
 /* ---------------- 1. BACKEND ENGINEER ---------------- */
@@ -2262,6 +2307,7 @@ if (dz) {
 /* ================= boot ================= */
 loadRole();
 renderGv();
+loadResumeRoleOptions();
 
 const dashboardResumeForm =
   document.getElementById("resumeAnalysisForm");
@@ -2485,3 +2531,26 @@ function escapeHtml(value) {
     }[char];
   });
 }
+
+async function loadResumeRoles() {
+  const select = document.getElementById("resumeRole");
+  if (!select) return;
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/roles");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const roles = await response.json();
+
+    select.replaceChildren(new Option("Select a target job role", ""));
+
+    roles.forEach(role => {
+      select.add(new Option(role.name, role.key));
+    });
+  } catch (error) {
+    console.error("Could not load roles:", error);
+    select.replaceChildren(new Option("Failed to load roles — refresh to retry", ""));
+  }
+}
+
+loadResumeRoles();
