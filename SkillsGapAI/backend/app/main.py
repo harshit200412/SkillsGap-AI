@@ -1,12 +1,13 @@
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from backend.app import models
 from backend.app.database import Base, engine, SessionLocal
+from backend.app.auth_routes import get_current_user, router as auth_router
 from backend.app.roles_data import TRACKS
-from fastapi import FastAPI, HTTPException, File, Form, UploadFile
+from fastapi import File, Form, UploadFile
 from io import BytesIO
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from backend.app.skill_analyzer import analyze_resume
 
 
 app = FastAPI(title="SkillGap AI")
+app.include_router(auth_router)
 
 Base.metadata.create_all(bind=engine)
 
@@ -111,7 +113,8 @@ def get_role(role_key: str):
 @app.post("/api/analyze-resume")
 async def analyze_uploaded_resume(
     file: UploadFile = File(...),
-    role_key: str = Form(...)
+    role_key: str = Form(...),
+    current_user: models.User = Depends(get_current_user),
 ):
     allowed_extensions = {".pdf", ".docx"}
     extension = Path(file.filename or "").suffix.lower()
@@ -178,4 +181,3 @@ async def analyze_uploaded_resume(
     result["role_name"] = role.name
 
     return result
-    
