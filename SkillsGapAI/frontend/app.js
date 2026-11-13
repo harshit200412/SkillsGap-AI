@@ -1074,6 +1074,103 @@ function showAuth(w){document.body.classList.remove('in-app');$$('.mkview').forE
 let pickKey='backend', pickThenEnter=true;
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+const ACCESS_TOKEN_KEY = "skillgap_access_token";
+const REFRESH_TOKEN_KEY = "skillgap_refresh_token";
+let API_ROLE_CATALOG = [];
+
+function saveAuthSession(data) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  localStorage.setItem("skillgap_user", JSON.stringify(data.user || {}));
+}
+function clearAuthSession() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("skillgap_user");
+}
+async function apiFetch(url, options = {}) {
+  const send = () => {
+    const headers = new Headers(options.headers || {});
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (token) headers.set("Authorization", "Bearer " + token);
+    return fetch(url, { ...options, headers });
+  };
+  let response = await send();
+  if (response.status === 401 && !url.includes("/api/auth/refresh")) {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (refreshToken) {
+      const refreshResponse = await fetch(API_BASE_URL + "/api/auth/refresh", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (refreshResponse.ok) {
+        saveAuthSession(await refreshResponse.json());
+        response = await send();
+      } else clearAuthSession();
+    }
+  }
+  return response;
+}
+async function handleLogin() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const status = document.getElementById("loginStatus");
+  const button = document.getElementById("loginBtn");
+  if (!email || !password) { status.textContent = "Enter your email and password."; return; }
+  button.disabled = true; status.textContent = "Signing in...";
+  try {
+    const response = await fetch(API_BASE_URL + "/api/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Login failed.");
+    saveAuthSession(data);
+    status.textContent = "Login successful.";
+    await openRolePicker(true);
+  } catch (error) {
+    status.textContent = error.message || "Could not connect to the backend.";
+  } finally { button.disabled = false; }
+}
+async function handleRegister() {
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const status = document.getElementById("signupStatus");
+  const button = document.getElementById("signupBtn");
+  if (!email || password.length < 8) {
+    status.textContent = "Enter a valid email and a password of at least 8 characters.";
+    return;
+  }
+  button.disabled = true; status.textContent = "Creating your account...";
+  try {
+    const response = await fetch(API_BASE_URL + "/api/auth/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Registration failed.");
+    saveAuthSession(data);
+    const first = document.getElementById("signupFirstName").value.trim();
+    const last = document.getElementById("signupLastName").value.trim();
+    localStorage.setItem("skillgap_display_name", [first, last].filter(Boolean).join(" "));
+    status.textContent = "Account created.";
+    await openRolePicker(true);
+  } catch (error) {
+    status.textContent = error.message || "Could not connect to the backend.";
+  } finally { button.disabled = false; }
+}
+async function handleLogout() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (refreshToken) {
+    try {
+      await fetch(API_BASE_URL + "/api/auth/logout", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+    } catch (error) { console.warn("Logout request could not reach the backend."); }
+  }
+  clearAuthSession(); showLanding();
+}
 
 async function openRolePicker(enter) {
     pickThenEnter = enter !== false;
@@ -2350,7 +2447,7 @@ if (dashboardResumeForm) {
     status.textContent = "Analysing your resume...";
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/analyze-resume`,
         {
           method: "POST",
@@ -2452,7 +2549,7 @@ if (sidebarForm) {
     status.textContent = "Analysing your resume...";
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/analyze-resume`,
         {
           method: "POST",
