@@ -1199,6 +1199,21 @@ async function openRolePicker(enter) {
         const catalog = await response.json();
         const tracks = catalog.tracks;
         const roles = catalog.roles;
+        API_ROLE_CATALOG = roles;
+        roles.forEach(role => {
+            if (!ROLES[role.key]) {
+                const template = JSON.parse(JSON.stringify(ROLES.backend));
+                template.name = role.name;
+                template.track = role.track;
+                template.level = role.level;
+                template.score = 0;
+                template.skills = (role.required_skills || []).map(skill => [skill, 0, 70]);
+                const displayName = localStorage.getItem("skillgap_display_name") || "Student";
+                template.persona.first = displayName.split(" ")[0];
+                template.persona.last = displayName.split(" ").slice(1).join(" ");
+                ROLES[role.key] = template;
+            }
+        });
 
         picker.innerHTML = tracks.map(track => `
             <div style="margin-bottom:20px">
