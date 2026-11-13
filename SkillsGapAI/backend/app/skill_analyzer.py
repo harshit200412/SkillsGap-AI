@@ -71,7 +71,7 @@ def _fallback_analysis(text: str, role_key: str) -> dict:
     }
 
 
-def analyze_resume(text: str, role_key: str) -> dict:
+def analyze_resume(text: str, role_key: str, role_name: str | None = None) -> dict:
     """Compare a resume with the selected role using Gemini when available."""
     if role_key not in ROLE_SKILLS:
         raise ValueError("Unsupported job role")
@@ -81,10 +81,10 @@ def analyze_resume(text: str, role_key: str) -> dict:
     try:
         from backend.app.ai_service import extract_resume_with_gemini
 
-        role_name = role_key.replace("_", " ").title()
+        resolved_role_name = role_name or role_key.replace("_", " ").title()
         extracted = extract_resume_with_gemini(
             resume_text=text,
-            role_name=role_name,
+            role_name=resolved_role_name,
             allowed_skills=required_skills,
         )
 
