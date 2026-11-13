@@ -2421,6 +2421,55 @@ loadRole();
 renderGv();
 loadResumeRoleOptions();
 
+
+async function generatePersonalizedRoadmap(analysis, roleKey, results) {
+  const button = results.querySelector(".generate-roadmap-btn");
+  const output = results.querySelector(".generated-roadmap");
+  if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
+    output.textContent = "Please log in before generating a roadmap.";
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Generating roadmap...";
+  output.textContent = "Gemini is creating a plan from your skill gaps...";
+  try {
+    const response = await apiFetch(API_BASE_URL + "/api/generate-roadmap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role_key: roleKey,
+        matched_skills: analysis.matched_skills || [],
+        missing_skills: analysis.missing_skills || [],
+        weekly_hours: 8,
+        duration_weeks: 6
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Roadmap generation failed.");
+    output.innerHTML = '<div class="track-card" style="margin-top:14px">' +
+      '<h3>' + escapeHtml(data.title || "Your learning roadmap") + '</h3>' +
+      '<p>' + escapeHtml(data.goal || "") + '</p>' +
+      '<p class="muted" style="font-size:12px">Generation mode: ' + escapeHtml(data.generation_mode || "AI") + '</p>' +
+      (data.weeks || []).map(week =>
+        '<div style="padding:12px 0;border-top:1px solid var(--rule)">' +
+        '<h4>Week ' + week.week + ': ' + escapeHtml(week.focus || "") + '</h4>' +
+        '<p class="muted" style="font-size:12px">' + (week.skills || []).map(escapeHtml).join(" · ") + '</p>' +
+        (week.tasks || []).map(task =>
+          '<div style="margin-top:8px"><b>' + escapeHtml(task.title) + '</b>' +
+          '<p>' + escapeHtml(task.description) + '</p>' +
+          '<p class="muted" style="font-size:12px">Deliverable: ' + escapeHtml(task.deliverable) +
+          ' · ' + task.estimated_hours + ' hours</p></div>'
+        ).join("") + '</div>'
+      ).join("") +
+      '<h4>Final project</h4><p>' + escapeHtml(data.final_project || "") + '</p></div>';
+  } catch (error) {
+    output.textContent = error.message || "Could not generate the roadmap.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate my learning roadmap";
+  }
+}
+
 const dashboardResumeForm =
   document.getElementById("resumeAnalysisForm");
 
@@ -2505,12 +2554,16 @@ if (dashboardResumeForm) {
           ${safeList(missing)}
           <h4 style="margin-top:14px">Skills detected in your resume (${detected.length})</h4>
           ${safeList(detected)}
-          <p class="muted" style="font-size:12px;margin-top:12px">
-            This is a basic text-based prototype. A skill may not be detected
-            if it is written differently in your resume.
-          </p>
+          <p class="muted" style="font-size:12px;margin-top:12px">Analysis mode: ${escapeHtml(data.analysis_mode || "rule_based_fallback")}</p>
+          ${data.professional_summary ? `<h4>AI resume summary</h4><p>${escapeHtml(data.professional_summary)}</p>` : ""}
+          ${data.strengths?.length ? `<h4>Resume strengths</h4>${safeList(data.strengths)}` : ""}
+          ${data.improvement_suggestions?.length ? `<h4>Suggestions</h4>${safeList(data.improvement_suggestions)}` : ""}
+          ${data.skill_evidence?.length ? `<h4>Evidence found in your resume</h4><ul>${data.skill_evidence.map(item => `<li><b>${escapeHtml(item.skill)}</b>: ${escapeHtml(item.evidence)}</li>`).join("")}</ul>` : ""}
+          <button type="button" class="btn btn-primary btn-sm generate-roadmap-btn" style="margin-top:14px">Generate my learning roadmap</button>
+          <div class="generated-roadmap"></div>
         </div>
       `;
+      results.querySelector(".generate-roadmap-btn")?.addEventListener("click", () => generatePersonalizedRoadmap(data, roleKey, results));
     } catch (error) {
       console.error("Resume analysis error:", error);
       status.textContent = error.message ||
@@ -2617,11 +2670,16 @@ if (sidebarForm) {
           <h4 style="margin-top:14px">Detected skills (${detected.length})</h4>
           ${safeList(detected)}
 
-          <p class="muted" style="font-size:12px;margin-top:12px">
-            Results depend on the skills detected in your resume text.
-          </p>
+          <p class="muted" style="font-size:12px;margin-top:12px">Analysis mode: ${escapeHtml(data.analysis_mode || "rule_based_fallback")}</p>
+          ${data.professional_summary ? `<h4>AI resume summary</h4><p>${escapeHtml(data.professional_summary)}</p>` : ""}
+          ${data.strengths?.length ? `<h4>Resume strengths</h4>${safeList(data.strengths)}` : ""}
+          ${data.improvement_suggestions?.length ? `<h4>Suggestions</h4>${safeList(data.improvement_suggestions)}` : ""}
+          ${data.skill_evidence?.length ? `<h4>Evidence found in your resume</h4><ul>${data.skill_evidence.map(item => `<li><b>${escapeHtml(item.skill)}</b>: ${escapeHtml(item.evidence)}</li>`).join("")}</ul>` : ""}
+          <button type="button" class="btn btn-primary btn-sm generate-roadmap-btn" style="margin-top:14px">Generate my learning roadmap</button>
+          <div class="generated-roadmap"></div>
         </div>
       `;
+      results.querySelector(".generate-roadmap-btn")?.addEventListener("click", () => generatePersonalizedRoadmap(data, roleKey, results));
     } catch (error) {
       console.error("Sidebar resume analysis error:", error);
       status.textContent =
