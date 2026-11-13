@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 def _contains_phrase(text: str, phrase: str) -> bool:
     # PDF/DOCX extraction often inserts line breaks inside a sentence.
-    normalized_text = re.sub(r"\\s+", " ", text.lower())
-    normalized_phrase = re.sub(r"\\s+", " ", phrase.lower()).strip()
+    normalized_text = re.sub(r"\s+", " ", text.lower())
+    normalized_phrase = re.sub(r"\s+", " ", phrase.lower()).strip()
     pattern = (
         r"(?<![a-z0-9])"
         + re.escape(normalized_phrase)
