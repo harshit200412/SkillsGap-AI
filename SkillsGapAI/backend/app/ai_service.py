@@ -100,3 +100,85 @@ Resume text:
         raise RuntimeError("Gemini returned an empty response.")
 
     return ResumeExtraction.model_validate_json(response.text)
+
+
+
+class RoadmapTask(BaseModel):
+    title: str
+    description: str
+    estimated_hours: float = Field(ge=0.5, le=40)
+    deliverable: str
+
+
+class RoadmapWeek(BaseModel):
+    week: int = Field(ge=1, le=16)
+    focus: str
+    skills: list[str]
+    tasks: list[RoadmapTask]
+
+
+class PersonalizedRoadmap(BaseModel):
+    title: str
+    goal: str
+    total_weeks: int = Field(ge=2, le=16)
+    weeks: list[RoadmapWeek]
+    final_project: str
+    success_criteria: list[str]
+
+
+def generate_personalized_roadmap(
+    role_name: str,
+    matched_skills: list[str],
+    missing_skills: list[str],
+    weekly_hours: int = 8,
+    duration_weeks: int = 6,
+) -> PersonalizedRoadmap:
+    """Generate a realistic learning roadmap prioritizing verified skill gaps."""
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not configured.")
+
+    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+    prompt = f"""
+Create a practical, personalized learning roadmap for the target role: {role_name}.
+
+Learner's already-demonstrated skills: {", ".join(matched_skills) or "Not provided"}
+Skills that need development: {", ".join(missing_skills) or "No gaps supplied"}
+Available study time: {weekly_hours} hours per week
+Roadmap duration: {duration_weeks} weeks
+
+Requirements:
+- Prioritize the supplied missing skills; do not waste time teaching demonstrated skills from scratch.
+- Respect prerequisites and teach foundational missing skills before dependent advanced skills.
+- Give each week a clear focus, 1-4 skills, and 2-4 actionable tasks.
+- Every task must include a measurable deliverable and realistic estimated hours.
+- Keep the total estimated hours per week at or below {weekly_hours}.
+- Include one final portfolio project that demonstrates the newly developed skills.
+- Do not invent certifications, courses, URLs, or job guarantees.
+- Make the plan appropriate for a beginner-to-intermediate learner.
+- Return exactly {duration_weeks} weeks, numbered 1 through {duration_weeks}.
+"""
+
+    response = _client(api_key).models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=0.25,
+            max_output_tokens=5000,
+            response_mime_type="application/json",
+            response_schema=PersonalizedRoadmap,
+        ),
+    )
+    if not response.text:
+        raise RuntimeError("Gemini returned an empty roadmap.")
+    roadmap = PersonalizedRoadmap.model_validate_json(response.text)
+    if len(roadmap.weeks) != duration_weeks:
+        raise ValueError("Gemini returned an unexpected number of roadmap weeks.")
+
+    allowed = {skill.casefold() for skill in missing_skills}
+    for week in roadmap.weeks:
+        week.skills = [
+            skill for skill in week.skills
+            if skill.casefold() in allowed
+        ]
+    return roadmap
