@@ -15,12 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 def _contains_phrase(text: str, phrase: str) -> bool:
+    # PDF/DOCX extraction often inserts line breaks inside a sentence.
+    normalized_text = re.sub(r"\\s+", " ", text.lower())
+    normalized_phrase = re.sub(r"\\s+", " ", phrase.lower()).strip()
     pattern = (
         r"(?<![a-z0-9])"
-        + re.escape(phrase.lower())
+        + re.escape(normalized_phrase)
         + r"(?![a-z0-9])"
     )
-    return re.search(pattern, text.lower()) is not None
+    return re.search(pattern, normalized_text) is not None
 
 
 def extract_skills(text: str) -> list[str]:
