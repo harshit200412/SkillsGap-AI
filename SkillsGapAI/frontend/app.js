@@ -1074,6 +1074,103 @@ function showAuth(w){document.body.classList.remove('in-app');$$('.mkview').forE
 let pickKey='backend', pickThenEnter=true;
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+const ACCESS_TOKEN_KEY = "skillgap_access_token";
+const REFRESH_TOKEN_KEY = "skillgap_refresh_token";
+let API_ROLE_CATALOG = [];
+
+function saveAuthSession(data) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  localStorage.setItem("skillgap_user", JSON.stringify(data.user || {}));
+}
+function clearAuthSession() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("skillgap_user");
+}
+async function apiFetch(url, options = {}) {
+  const send = () => {
+    const headers = new Headers(options.headers || {});
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (token) headers.set("Authorization", "Bearer " + token);
+    return fetch(url, { ...options, headers });
+  };
+  let response = await send();
+  if (response.status === 401 && !url.includes("/api/auth/refresh")) {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (refreshToken) {
+      const refreshResponse = await fetch(API_BASE_URL + "/api/auth/refresh", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (refreshResponse.ok) {
+        saveAuthSession(await refreshResponse.json());
+        response = await send();
+      } else clearAuthSession();
+    }
+  }
+  return response;
+}
+async function handleLogin() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const status = document.getElementById("loginStatus");
+  const button = document.getElementById("loginBtn");
+  if (!email || !password) { status.textContent = "Enter your email and password."; return; }
+  button.disabled = true; status.textContent = "Signing in...";
+  try {
+    const response = await fetch(API_BASE_URL + "/api/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Login failed.");
+    saveAuthSession(data);
+    status.textContent = "Login successful.";
+    await openRolePicker(true);
+  } catch (error) {
+    status.textContent = error.message || "Could not connect to the backend.";
+  } finally { button.disabled = false; }
+}
+async function handleRegister() {
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const status = document.getElementById("signupStatus");
+  const button = document.getElementById("signupBtn");
+  if (!email || password.length < 8) {
+    status.textContent = "Enter a valid email and a password of at least 8 characters.";
+    return;
+  }
+  button.disabled = true; status.textContent = "Creating your account...";
+  try {
+    const response = await fetch(API_BASE_URL + "/api/auth/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Registration failed.");
+    saveAuthSession(data);
+    const first = document.getElementById("signupFirstName").value.trim();
+    const last = document.getElementById("signupLastName").value.trim();
+    localStorage.setItem("skillgap_display_name", [first, last].filter(Boolean).join(" "));
+    status.textContent = "Account created.";
+    await openRolePicker(true);
+  } catch (error) {
+    status.textContent = error.message || "Could not connect to the backend.";
+  } finally { button.disabled = false; }
+}
+async function handleLogout() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (refreshToken) {
+    try {
+      await fetch(API_BASE_URL + "/api/auth/logout", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+    } catch (error) { console.warn("Logout request could not reach the backend."); }
+  }
+  clearAuthSession(); showLanding();
+}
 
 async function openRolePicker(enter) {
     pickThenEnter = enter !== false;
@@ -1102,6 +1199,21 @@ async function openRolePicker(enter) {
         const catalog = await response.json();
         const tracks = catalog.tracks;
         const roles = catalog.roles;
+        API_ROLE_CATALOG = roles;
+        roles.forEach(role => {
+            if (!ROLES[role.key]) {
+                const template = JSON.parse(JSON.stringify(ROLES.backend));
+                template.name = role.name;
+                template.track = role.track;
+                template.level = role.level;
+                template.score = 0;
+                template.skills = (role.required_skills || []).map(skill => [skill, 0, 70]);
+                const displayName = localStorage.getItem("skillgap_display_name") || "Student";
+                template.persona.first = displayName.split(" ")[0];
+                template.persona.last = displayName.split(" ").slice(1).join(" ");
+                ROLES[role.key] = template;
+            }
+        });
 
         picker.innerHTML = tracks.map(track => `
             <div style="margin-bottom:20px">
@@ -2309,6 +2421,55 @@ loadRole();
 renderGv();
 loadResumeRoleOptions();
 
+
+async function generatePersonalizedRoadmap(analysis, roleKey, results) {
+  const button = results.querySelector(".generate-roadmap-btn");
+  const output = results.querySelector(".generated-roadmap");
+  if (!localStorage.getItem(ACCESS_TOKEN_KEY)) {
+    output.textContent = "Please log in before generating a roadmap.";
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Generating roadmap...";
+  output.textContent = "Gemini is creating a plan from your skill gaps...";
+  try {
+    const response = await apiFetch(API_BASE_URL + "/api/generate-roadmap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role_key: roleKey,
+        matched_skills: analysis.matched_skills || [],
+        missing_skills: analysis.missing_skills || [],
+        weekly_hours: 8,
+        duration_weeks: 6
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Roadmap generation failed.");
+    output.innerHTML = '<div class="track-card" style="margin-top:14px">' +
+      '<h3>' + escapeHtml(data.title || "Your learning roadmap") + '</h3>' +
+      '<p>' + escapeHtml(data.goal || "") + '</p>' +
+      '<p class="muted" style="font-size:12px">Generation mode: ' + escapeHtml(data.generation_mode || "AI") + '</p>' +
+      (data.weeks || []).map(week =>
+        '<div style="padding:12px 0;border-top:1px solid var(--rule)">' +
+        '<h4>Week ' + week.week + ': ' + escapeHtml(week.focus || "") + '</h4>' +
+        '<p class="muted" style="font-size:12px">' + (week.skills || []).map(escapeHtml).join(" · ") + '</p>' +
+        (week.tasks || []).map(task =>
+          '<div style="margin-top:8px"><b>' + escapeHtml(task.title) + '</b>' +
+          '<p>' + escapeHtml(task.description) + '</p>' +
+          '<p class="muted" style="font-size:12px">Deliverable: ' + escapeHtml(task.deliverable) +
+          ' · ' + task.estimated_hours + ' hours</p></div>'
+        ).join("") + '</div>'
+      ).join("") +
+      '<h4>Final project</h4><p>' + escapeHtml(data.final_project || "") + '</p></div>';
+  } catch (error) {
+    output.textContent = error.message || "Could not generate the roadmap.";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate my learning roadmap";
+  }
+}
+
 const dashboardResumeForm =
   document.getElementById("resumeAnalysisForm");
 
@@ -2350,7 +2511,7 @@ if (dashboardResumeForm) {
     status.textContent = "Analysing your resume...";
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/analyze-resume`,
         {
           method: "POST",
@@ -2393,12 +2554,16 @@ if (dashboardResumeForm) {
           ${safeList(missing)}
           <h4 style="margin-top:14px">Skills detected in your resume (${detected.length})</h4>
           ${safeList(detected)}
-          <p class="muted" style="font-size:12px;margin-top:12px">
-            This is a basic text-based prototype. A skill may not be detected
-            if it is written differently in your resume.
-          </p>
+          <p class="muted" style="font-size:12px;margin-top:12px">Analysis mode: ${escapeHtml(data.analysis_mode || "rule_based_fallback")}</p>
+          ${data.professional_summary ? `<h4>AI resume summary</h4><p>${escapeHtml(data.professional_summary)}</p>` : ""}
+          ${data.strengths?.length ? `<h4>Resume strengths</h4>${safeList(data.strengths)}` : ""}
+          ${data.improvement_suggestions?.length ? `<h4>Suggestions</h4>${safeList(data.improvement_suggestions)}` : ""}
+          ${data.skill_evidence?.length ? `<h4>Evidence found in your resume</h4><ul>${data.skill_evidence.map(item => `<li><b>${escapeHtml(item.skill)}</b>: ${escapeHtml(item.evidence)}</li>`).join("")}</ul>` : ""}
+          <button type="button" class="btn btn-primary btn-sm generate-roadmap-btn" style="margin-top:14px">Generate my learning roadmap</button>
+          <div class="generated-roadmap"></div>
         </div>
       `;
+      results.querySelector(".generate-roadmap-btn")?.addEventListener("click", () => generatePersonalizedRoadmap(data, roleKey, results));
     } catch (error) {
       console.error("Resume analysis error:", error);
       status.textContent = error.message ||
@@ -2452,7 +2617,7 @@ if (sidebarForm) {
     status.textContent = "Analysing your resume...";
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/api/analyze-resume`,
         {
           method: "POST",
@@ -2505,11 +2670,16 @@ if (sidebarForm) {
           <h4 style="margin-top:14px">Detected skills (${detected.length})</h4>
           ${safeList(detected)}
 
-          <p class="muted" style="font-size:12px;margin-top:12px">
-            Results depend on the skills detected in your resume text.
-          </p>
+          <p class="muted" style="font-size:12px;margin-top:12px">Analysis mode: ${escapeHtml(data.analysis_mode || "rule_based_fallback")}</p>
+          ${data.professional_summary ? `<h4>AI resume summary</h4><p>${escapeHtml(data.professional_summary)}</p>` : ""}
+          ${data.strengths?.length ? `<h4>Resume strengths</h4>${safeList(data.strengths)}` : ""}
+          ${data.improvement_suggestions?.length ? `<h4>Suggestions</h4>${safeList(data.improvement_suggestions)}` : ""}
+          ${data.skill_evidence?.length ? `<h4>Evidence found in your resume</h4><ul>${data.skill_evidence.map(item => `<li><b>${escapeHtml(item.skill)}</b>: ${escapeHtml(item.evidence)}</li>`).join("")}</ul>` : ""}
+          <button type="button" class="btn btn-primary btn-sm generate-roadmap-btn" style="margin-top:14px">Generate my learning roadmap</button>
+          <div class="generated-roadmap"></div>
         </div>
       `;
+      results.querySelector(".generate-roadmap-btn")?.addEventListener("click", () => generatePersonalizedRoadmap(data, roleKey, results));
     } catch (error) {
       console.error("Sidebar resume analysis error:", error);
       status.textContent =

@@ -1,131 +1,138 @@
+"""Resume skill extraction and role-specific gap analysis.
 
+Gemini is used for evidence-based resume extraction when configured.
+A deterministic keyword analyser remains available as a fallback.
+"""
+
+from __future__ import annotations
+
+import logging
 import re
 
-ROLE_SKILLS = {
-    "backend": [
-        "Python", "Java", "SQL", "PostgreSQL", "REST API",
-        "FastAPI", "Django", "Flask", "Git", "Docker",
-        "Database Design", "Authentication"
-    ],
-    "analyst": [
-        "SQL", "Python", "Excel", "Power BI", "Tableau",
-        "Statistics", "Data Visualization", "Pandas",
-        "NumPy", "Data Cleaning"
-    ],
-    "pm": [
-        "Product Strategy", "Market Research", "User Research",
-        "Agile", "Scrum", "Communication", "Data Analysis",
-        "Roadmapping", "Prioritization", "Product Analytics"
-    ],
-    "marketing": [
-        "SEO", "Content Marketing", "Social Media Marketing",
-        "Google Analytics", "Email Marketing", "Market Research",
-        "Copywriting", "Digital Marketing", "Excel", "Communication"
-    ],
-    "finance": [
-        "Excel", "Financial Modeling", "Accounting",
-        "Financial Analysis", "Valuation", "SQL",
-        "Budgeting", "Forecasting", "Power BI", "Statistics"
-    ],
-    "ops": [
-        "Supply Chain Management", "Inventory Management",
-        "Excel", "SQL", "Project Management", "Logistics",
-        "Procurement", "Forecasting", "Data Analysis",
-        "Communication"
-    ],
-    "civil": [
-        "AutoCAD", "Revit", "Structural Analysis",
-        "Quantity Surveying", "Project Management",
-        "Construction Management", "Site Safety",
-        "Estimation", "Technical Drawing", "Quality Control"
-    ],
-    "mech": [
-        "AutoCAD", "SolidWorks", "CATIA", "GD&T",
-        "CAD", "FEA", "Ansys", "Thermodynamics",
-        "Technical Drawing", "Manufacturing"
-    ]
-}
+from backend.app.role_skills import ROLE_SKILLS, SKILL_ALIASES
 
-# Common alternative names for skills.
-ALIASES = {
-    "javascript": ["js"],
-    "typescript": ["ts"],
-    "postgresql": ["postgres"],
-    "power bi": ["powerbi"],
-    "rest api": ["rest apis", "restful api", "restful apis"],
-    "fastapi": ["fast api"],
-    "scikit-learn": ["sklearn"],
-    "machine learning": ["ml"],
-    "node.js": ["nodejs", "node js"],
-    "supply chain management": ["supply chain"],
-    "social media marketing": ["social media"],
-    "financial modeling": ["financial modelling"],
-    "solidworks": ["solid works"],
-    "autocad": ["auto cad"],
-    "gd&t": ["geometric dimensioning and tolerancing"],
-    "fea": ["finite element analysis"],
-}
+logger = logging.getLogger(__name__)
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    # PDF/DOCX extraction often inserts line breaks inside a sentence.
+    normalized_text = re.sub(r"\s+", " ", text.lower())
+    normalized_phrase = re.sub(r"\s+", " ", phrase.lower()).strip()
+    pattern = (
+        r"(?<![a-z0-9])"
+        + re.escape(normalized_phrase)
+        + r"(?![a-z0-9])"
+    )
+    return re.search(pattern, normalized_text) is not None
 
 
 def extract_skills(text: str) -> list[str]:
-    """Identify known skills mentioned in resume text."""
-    found = []
+    """Rule-based fallback: identify canonical skills mentioned in text."""
+    found: list[str] = []
     normalized_text = text.lower()
 
-    for skill_list in ROLE_SKILLS.values():
-        for skill in skill_list:
-            if skill in found:
-                continue
+    all_skills = sorted(
+        {skill for skills in ROLE_SKILLS.values() for skill in skills},
+        key=str.lower,
+    )
 
-            candidates = [skill.lower()]
-            candidates.extend(ALIASES.get(skill.lower(), []))
+    for skill in all_skills:
+        candidates = [skill.lower(), *SKILL_ALIASES.get(skill.lower(), [])]
+        if any(_contains_phrase(normalized_text, candidate) for candidate in candidates):
+            found.append(skill)
 
-            for candidate in candidates:
-                pattern = (
-                    r"(?<![a-z0-9])"
-                    + re.escape(candidate)
-                    + r"(?![a-z0-9])"
-                )
-
-                if re.search(pattern, normalized_text):
-                    found.append(skill)
-                    break
-
-    return sorted(found, key=str.lower)
+    return found
 
 
-def analyze_resume(text: str, role_key: str) -> dict:
-    """Compare detected resume skills with a role's skill checklist."""
-    if role_key not in ROLE_SKILLS:
-        raise ValueError("Unsupported job role")
-
-    resume_skills = extract_skills(text)
+def _fallback_analysis(text: str, role_key: str) -> dict:
     required_skills = ROLE_SKILLS[role_key]
+    detected_skills = extract_skills(text)
+    detected_set = {skill.casefold() for skill in detected_skills}
 
-    # Compare case-insensitively.
-    resume_skill_set = {skill.lower() for skill in resume_skills}
-
-    matched = [
-        skill for skill in required_skills
-        if skill.lower() in resume_skill_set
-    ]
-
-    missing = [
-        skill for skill in required_skills
-        if skill.lower() not in resume_skill_set
-    ]
-
-    percentage = round(
-        len(matched) / len(required_skills) * 100
-    ) if required_skills else 0
+    matched = [skill for skill in required_skills if skill.casefold() in detected_set]
+    missing = [skill for skill in required_skills if skill.casefold() not in detected_set]
+    percentage = round(len(matched) / len(required_skills) * 100) if required_skills else 0
 
     return {
         "role_key": role_key,
-        "detected_skills": resume_skills,
+        "detected_skills": detected_skills,
         "required_skills": required_skills,
         "matched_skills": matched,
         "missing_skills": missing,
         "match_percentage": percentage,
         "total_required": len(required_skills),
-        "total_matched": len(matched)
+        "total_matched": len(matched),
+        "analysis_mode": "rule_based_fallback",
+        "professional_summary": "",
+        "experience_highlights": [],
+        "education_highlights": [],
+        "strengths": [],
+        "improvement_suggestions": [
+            "Gemini AI analysis was unavailable, so keyword-based matching was used."
+        ],
+        "skill_evidence": [],
     }
+
+
+def analyze_resume(text: str, role_key: str, role_name: str | None = None) -> dict:
+    """Compare a resume with the selected role using Gemini when available."""
+    if role_key not in ROLE_SKILLS:
+        raise ValueError("Unsupported job role")
+
+    required_skills = ROLE_SKILLS[role_key]
+
+    try:
+        from backend.app.ai_service import extract_resume_with_gemini
+
+        resolved_role_name = role_name or role_key.replace("_", " ").title()
+        extracted = extract_resume_with_gemini(
+            resume_text=text,
+            role_name=resolved_role_name,
+            allowed_skills=required_skills,
+        )
+
+        # Only accept exact canonical skills returned by the structured model.
+        allowed_lookup = {skill.casefold(): skill for skill in required_skills}
+        accepted = []
+        evidence_rows = []
+        for item in extracted.skills:
+            canonical = allowed_lookup.get(item.skill.casefold())
+            if not canonical or not item.evidence.strip():
+                continue
+            # Require the evidence phrase to actually occur in the supplied resume.
+            if not _contains_phrase(text, item.evidence.strip()):
+                continue
+            if canonical not in accepted:
+                accepted.append(canonical)
+                evidence_rows.append({
+                    "skill": canonical,
+                    "evidence": item.evidence.strip(),
+                    "confidence": round(item.confidence, 2),
+                })
+
+        matched = [skill for skill in required_skills if skill in accepted]
+        missing = [skill for skill in required_skills if skill not in accepted]
+        percentage = round(len(matched) / len(required_skills) * 100) if required_skills else 0
+
+        return {
+            "role_key": role_key,
+            "detected_skills": accepted,
+            "required_skills": required_skills,
+            "matched_skills": matched,
+            "missing_skills": missing,
+            "match_percentage": percentage,
+            "total_required": len(required_skills),
+            "total_matched": len(matched),
+            "analysis_mode": "gemini_ai",
+            "professional_summary": extracted.professional_summary,
+            "experience_highlights": extracted.experience_highlights,
+            "education_highlights": extracted.education_highlights,
+            "strengths": extracted.strengths,
+            "improvement_suggestions": extracted.improvement_suggestions,
+            "skill_evidence": evidence_rows,
+        }
+
+    except Exception:
+        # Do not log resume text, API keys, or the model's raw response.
+        logger.exception("Gemini resume analysis failed; using rule-based fallback.")
+        return _fallback_analysis(text, role_key)
