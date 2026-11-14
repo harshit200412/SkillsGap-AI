@@ -12,7 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from pydantic import BaseModel, Field
 
 # Resolve the project-root .env file for local development.
@@ -37,6 +37,36 @@ class ResumeExtraction(BaseModel):
 @lru_cache(maxsize=1)
 def _client(api_key: str):
     return genai.Client(api_key=api_key)
+
+
+def _generate_with_fallback(api_key: str, model: str, contents: str, config):
+    """Try the configured model, then a lighter model for temporary capacity errors."""
+    client = _client(api_key)
+    fallback_model = os.getenv(
+        "GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite"
+    ).strip()
+    models = [model]
+    if fallback_model and fallback_model != model:
+        models.append(fallback_model)
+
+    last_error = None
+    for candidate in models:
+        try:
+            return client.models.generate_content(
+                model=candidate,
+                contents=contents,
+                config=config,
+            )
+        except errors.APIError as exc:
+            # Switch models only for transient capacity/rate/server failures.
+            if getattr(exc, "code", None) not in {429, 500, 502, 503, 504}:
+                raise
+            last_error = exc
+
+    raise RuntimeError(
+        "Gemini is temporarily unavailable on both configured models: "
+        + ", ".join(models)
+    ) from last_error
 
 
 def is_gemini_configured() -> bool:
@@ -85,7 +115,8 @@ Resume text:
 </resume>
 """
 
-    response = _client(api_key).models.generate_content(
+    response = _generate_with_fallback(
+        api_key=api_key,
         model=model,
         contents=prompt,
         config=types.GenerateContentConfig(
@@ -159,7 +190,8 @@ Requirements:
 - Return exactly {duration_weeks} weeks, numbered 1 through {duration_weeks}.
 """
 
-    response = _client(api_key).models.generate_content(
+    response = _generate_with_fallback(
+        api_key=api_key,
         model=model,
         contents=prompt,
         config=types.GenerateContentConfig(
