@@ -18,6 +18,7 @@ from backend.app.database import Base, SessionLocal, engine
 from backend.app.role_skills import ROLE_SKILLS
 from backend.app.rate_limits import limiter
 from backend.app.roles_data import JOB_ROLES, TRACKS
+from backend.app.study_resources import get_starter_resources
 from backend.app.skill_analyzer import analyze_resume
 
 
@@ -124,6 +125,16 @@ def study_materials(
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Could not fetch live study materials. Please try again.") from exc
     return {"role": role, "skill": body.skill.strip(), "resources": resources}
+
+
+@app.get("/api/study-materials/starter/{role_key}")
+def starter_study_materials(role_key: str):
+    """Serve curated materials for built-in roles without requiring live Gemini search."""
+    resources = get_starter_resources(role_key)
+    if not resources:
+        raise HTTPException(status_code=404, detail="No starter materials are available for this role.")
+    role = next((item["name"] for item in JOB_ROLES if item["key"] == role_key), role_key)
+    return {"role": role, "resources": resources}
 
 
 @app.post("/api/chat")

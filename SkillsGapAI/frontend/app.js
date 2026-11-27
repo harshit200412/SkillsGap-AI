@@ -2194,20 +2194,51 @@ function jumpNow(){const el=$('.rm-item.now');if(el){el.classList.add('open');el
 
 /* ================= study ================= */
 let liveStudyResources=[];
+let starterStudyResources=[];
+let starterStudyRole='';
+let starterStudyRequest=0;
 function renderStudy(){
   const roleField=$('#stRole');
   if(roleField&&roleField.dataset.role!==RK){
     roleField.value=R.name;
     roleField.dataset.role=RK;
     liveStudyResources=[];
+    starterStudyResources=[];
+    starterStudyRole='';
+    filterStudy();
+    loadStarterStudyMaterials(RK);
+  }
+}
+async function loadStarterStudyMaterials(roleKey){
+  const requestId=++starterStudyRequest;
+  starterStudyRole=roleKey;
+  try{
+    const response=await fetch(API_BASE_URL+'/api/study-materials/starter/'+encodeURIComponent(roleKey));
+    if(!response.ok)throw new Error('Starter materials are unavailable.');
+    const data=await response.json();
+    if(requestId!==starterStudyRequest||roleKey!==RK)return;
+    starterStudyResources=Array.isArray(data.resources)?data.resources.filter(r=>r&&typeof r.url==='string'&&r.url.startsWith('https://')):[];
+    filterStudy();
+  }catch(_error){
+    if(requestId!==starterStudyRequest)return;
+    starterStudyResources=[];
     filterStudy();
   }
+}
+function combinedStudyResources(){
+  const seen=new Set();
+  return [...starterStudyResources,...liveStudyResources].filter(resource=>{
+    const key=(resource.url||'').toLowerCase();
+    if(!key||seen.has(key))return false;
+    seen.add(key);return true;
+  });
 }
 function filterStudy(){
   if(!$('#stGrid'))return;
   const tab=$('#stTabs .tab.active')?.dataset.t||'all';
-  const items=liveStudyResources.filter(r=>tab==='all'||r.type===tab);
-  $('#stCount').textContent=liveStudyResources.length?`${items.length} live source${items.length===1?'':'s'} · ${$('#stRole').value.trim()}`:'';
+  const resources=combinedStudyResources();
+  const items=resources.filter(r=>tab==='all'||r.type===tab);
+  $('#stCount').textContent=resources.length?`${items.length} ${items.length===1?'resource':'resources'} · ${$('#stRole').value.trim()}${starterStudyResources.length?' · curated starters + live results':''}`:'';
   $('#stEmpty').style.display=items.length?'none':'block';
   if(!items.length){$('#stGrid').innerHTML='';return}
   const labels={video:'YouTube',course:'Course',docs:'Documentation',practice:'Practice',article:'Web resource'};
@@ -2223,7 +2254,9 @@ async function fetchStudyMaterials(){
   const role=$('#stRole').value.trim(),skill=$('#stSkill').value.trim(),query=$('#stSearch').value.trim(),button=$('#stFetch'),empty=$('#stEmpty');
   if(role.length<2){empty.innerHTML='<h3>Enter a target role</h3><p>Type the role you want to learn for, then search again.</p>';empty.style.display='block';return}
   button.disabled=true;button.textContent='Searching the web…';
-  empty.innerHTML='<h3>Finding current sources…</h3><p>Gemini is searching for relevant websites and YouTube materials.</p>';empty.style.display='block';$('#stGrid').innerHTML='';$('#stCount').textContent='';
+  if(role===R.name&&starterStudyRole!==RK)loadStarterStudyMaterials(RK);
+  if(role!==R.name){starterStudyResources=[];starterStudyRole='';filterStudy()}
+  empty.innerHTML='<h3>Searching for extra current sources…</h3><p>Your starter materials stay available while Gemini searches.</p>';empty.style.display='block';
   try{
     const response=await apiFetch(API_BASE_URL+'/api/study-materials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,skill,query})});
     const data=await response.json();
@@ -2231,15 +2264,17 @@ async function fetchStudyMaterials(){
     if(!response.ok)throw new Error(data.detail||'Could not fetch live study materials.');
     liveStudyResources=Array.isArray(data.resources)?data.resources.filter(r=>r&&typeof r.url==='string'&&r.url.startsWith('https://')):[];
     filterStudy();
-    if(!liveStudyResources.length){empty.innerHTML='<h3>No usable source links came back</h3><p>Try a more specific skill or role.</p>';empty.style.display='block'}
+    if(!liveStudyResources.length&&starterStudyResources.length){empty.style.display='none'}
+    else if(!combinedStudyResources().length){empty.innerHTML='<h3>No usable source links came back</h3><p>Try a more specific skill or role.</p>';empty.style.display='block'}
   }catch(error){
     liveStudyResources=[];filterStudy();
-    if((error.message||'').includes('Please sign in'))empty.innerHTML='<h3>Sign in to search live materials</h3><p>Live study sources are available to your account. Your role and skill search will be ready after sign-in.</p><button class="btn btn-primary btn-sm" onclick="showAuth(\'login\')">Log in</button>';
+    if(starterStudyResources.length){empty.innerHTML='<h3>Starter materials are ready</h3><p>Live search could not finish: '+escapeHtml(error.message||'check your connection and try again.')+'</p>';empty.style.display='block'}
+    else if((error.message||'').includes('Please sign in'))empty.innerHTML='<h3>Sign in to search live materials</h3><p>Live study search is available after sign-in.</p><button class="btn btn-primary btn-sm" onclick="showAuth(\'login\')">Log in</button>';
     else empty.innerHTML='<h3>Could not fetch study materials</h3><p>'+escapeHtml(error.message||'Check your connection and try again.')+'</p>';
-    empty.style.display='block';
+    if(!starterStudyResources.length)empty.style.display='block';
   }finally{button.disabled=false;button.innerHTML='<svg><use href="#i-search"/></svg>Find materials'}
 }
-function clearStudy(){$('#stSearch').value='';$('#stSkill').value='';liveStudyResources=[];filterStudy();$('#stEmpty').innerHTML='<h3>Find learning materials for your next step</h3><p>Enter any role and optionally a skill, then search to fetch current YouTube and web resources.</p>'}
+function clearStudy(){$('#stSearch').value='';$('#stSkill').value='';liveStudyResources=[];filterStudy();$('#stEmpty').innerHTML='<h3>Materials for '+escapeHtml($('#stRole').value.trim())+'</h3><p>Use search to find additional current materials for this role.</p>';$('#stEmpty').style.display=starterStudyResources.length?'none':'block'}
 $('#stTabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
   $$('#stTabs .tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');filterStudy()});
 ['stRole','stSkill','stSearch'].forEach(id=>$('#'+id)?.addEventListener('keydown',e=>{if(e.key==='Enter')fetchStudyMaterials()}));
@@ -2568,9 +2603,11 @@ function initCareerChat(){
     while(careerChatHistory.length>15)careerChatHistory.splice(0,2);
     const pending=addCareerChatMessage('assistant','Thinking through that…',null,true);
     send.disabled=true; send.textContent='…';
+    const pendingTimer=setTimeout(()=>{if(pending.isConnected)pending.textContent='Still working on a thoughtful reply…';},9000);
     try{
-      const roadmap_context=RM.map((week,index)=>({week:index+1,focus:week.t,skills:week.skills,tasks:week.tasks.map(task=>`${task.done?'✓ ':''}${task.t}`)}));
-      const response=await apiFetch(API_BASE_URL+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role_key:RK,messages:careerChatHistory,roadmap_context})});
+      const asksAboutRoadmap=careerChatHistory.slice(-6).some(message=>message.role==='user'&&/\b(roadmap|learning path|study plan|learning plan)\b/i.test(message.content));
+      const roadmap_context=asksAboutRoadmap?RM.map((week,index)=>({week:index+1,focus:week.t,skills:week.skills,tasks:week.tasks.map(task=>`${task.done?'✓ ':''}${task.t}`)})):[];
+      const response=await apiFetch(API_BASE_URL+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role_key:RK,messages:careerChatHistory.slice(-8),roadmap_context})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.detail||'Gemini could not answer right now.');
       pending.remove();
@@ -2579,7 +2616,7 @@ function initCareerChat(){
     }catch(error){
       pending.remove(); careerChatHistory.pop();
       addCareerChatMessage('assistant',error.message||'Could not reach the career coach. Please try again.');
-    }finally{send.disabled=false;send.textContent='Send';input.focus();}
+    }finally{clearTimeout(pendingTimer);send.disabled=false;send.textContent='Send';input.focus();}
   });
 }
 

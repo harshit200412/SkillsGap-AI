@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -89,12 +90,14 @@ def _api_key() -> str:
     return (os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY") or "").strip()
 
 
-def _generate_with_fallback(api_key: str, model: str, contents: str, config):
+def _generate_with_fallback(
+    api_key: str, model: str, contents: str, config, fallback_model: str | None = None
+):
     """Try the configured model, then a lighter model for temporary capacity errors."""
     client = _client(api_key)
-    fallback_model = os.getenv(
+    fallback_model = (fallback_model or os.getenv(
         "GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite"
-    ).strip()
+    )).strip()
     models = [model]
     if fallback_model and fallback_model != model:
         models.append(fallback_model)
@@ -240,8 +243,23 @@ def generate_career_chat_reply(
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not configured.")
 
-    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+    # Keep chat latency low with a lightweight model; GEMINI_MODEL remains the
+    # fallback so existing deployments retain their configured primary model.
+    model = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.5-flash-lite").strip()
+    fallback_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
     skills = ", ".join(allowed_skills)
+    # The UI can keep a longer transcript, but only recent turns are useful to
+    # the model and large histories make each reply slower and more expensive.
+    messages = messages[-8:]
+    total_chars = 0
+    bounded_messages = []
+    for message in reversed(messages):
+        content = message["content"][-1800:]
+        if total_chars + len(content) > 6000:
+            break
+        bounded_messages.append({"role": message["role"], "content": content})
+        total_chars += len(content)
+    messages = list(reversed(bounded_messages))
     history = [
         types.Content(
             role="model" if message["role"] == "assistant" else "user",
@@ -249,6 +267,12 @@ def generate_career_chat_reply(
         )
         for message in messages
     ]
+    recent_user_messages = [m["content"] for m in messages if m["role"] == "user"][-3:]
+    asks_about_roadmap = any(
+        re.search(r"\b(roadmap|learning path|study plan|learning plan)\b", message, re.I)
+        for message in recent_user_messages
+    )
+    roadmap = json.dumps(roadmap_context or [], ensure_ascii=False) if asks_about_roadmap else "Not needed for this question."
     system_instruction = f"""
 You are SkillGap AI's practical career coach. Help the user understand skills,
 career options, resume evidence, interview preparation, and realistic next steps.
@@ -256,7 +280,7 @@ career options, resume evidence, interview preparation, and realistic next steps
 The user's selected target role is: {role_name}
 The canonical skills for this role are: {skills}
 The user's preferred name is: {user_name or 'not provided'}
-The current in-app roadmap levels and tasks are: {json.dumps(roadmap_context or [], ensure_ascii=False)}
+The current in-app roadmap levels and tasks are: {roadmap}
 
 Keep answers clear and concise. Ground advice in the information the user provides.
 When the user asks for a roadmap, summarize the supplied in-app levels and tasks in
@@ -277,8 +301,9 @@ its contents in this chat.
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=0.4,
-            max_output_tokens=900,
+            max_output_tokens=600,
         ),
+        fallback_model=fallback_model,
     )
     if not response.text or not response.text.strip():
         raise RuntimeError("Gemini returned an empty career-coach response.")
