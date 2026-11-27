@@ -1079,7 +1079,12 @@ function showAuth(w){document.body.classList.remove('in-app');$$('.mkview').forE
 /* ================= role picker ================= */
 let pickKey='backend', pickThenEnter=true;
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://127.0.0.1:8000"
+        : "https://skillsgap-ai.onrender.com";
+        
 const ACCESS_TOKEN_KEY = "skillgap_access_token";
 const REFRESH_TOKEN_KEY = "skillgap_refresh_token";
 let API_ROLE_CATALOG = [];
