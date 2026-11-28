@@ -1185,6 +1185,7 @@ async function handleLogin() {
     if (!response.ok) {
       if (response.status === 403 && /verify your email/i.test(data.detail || "")) {
         document.getElementById("verifyEmailAddress").textContent = email;
+        document.getElementById("verifyEmailInput").value = email;
         document.getElementById("verifyStatus").textContent = "Your account exists, but your email is not verified yet. Check your inbox or request a new message.";
         showAuth("verify");
         return;
@@ -1219,6 +1220,7 @@ async function handleRegister() {
     if (!response.ok) throw new Error(authApiErrorMessage(data, "Registration failed."));
     clearAuthSession();
     document.getElementById("verifyEmailAddress").textContent = email;
+    document.getElementById("verifyEmailInput").value = email;
     document.getElementById("verifyToken").value = "";
     document.getElementById("verifyStatus").textContent = "We sent a verification link or token to your inbox. Enter the token below to activate your account.";
     showAuth("verify");
