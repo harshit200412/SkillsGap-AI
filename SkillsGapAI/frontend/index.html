@@ -255,6 +255,23 @@
   </div>
 </section>
 
+<!-- EMAIL VERIFICATION -->
+<section class="mkview" id="v-verify" style="display:none">
+  <div class="auth"><div class="auth-form"><div class="auth-inner">
+    <a class="logo" href="#" onclick="showLanding();return false"><span class="mark"><svg><use href="#i-target"/></svg></span>SkillGap</a>
+    <h1>Verify your email</h1>
+    <p class="muted">We sent a verification token to your email. Paste it below to activate your account.</p>
+    <div class="stack" style="margin-top:22px;gap:12px">
+      <label class="field"><span>Email address</span><input id="verifyEmail" class="inp" type="email" autocomplete="email" placeholder="you@example.com" required></label>
+      <label class="field"><span>Verification token</span><textarea id="verifyToken" class="inp" rows="3" placeholder="Paste the full token from your email" autocomplete="off" required></textarea></label>
+      <p id="verifyStatus" class="muted" role="status" aria-live="polite"></p>
+      <button id="verifyBtn" type="button" class="btn btn-primary btn-lg btn-block" onclick="handleEmailVerification()">Verify email</button>
+      <button id="resendVerifyBtn" type="button" class="btn btn-block" onclick="handleResendVerification()">Resend verification email</button>
+    </div>
+    <p class="muted" style="text-align:center;margin-top:16px;font-size:13px">Already verified? <a href="#" style="font-weight:600;border-bottom:1.5px solid var(--mark)" onclick="showAuth('login');return false">Log in</a></p>
+  </div></div><div class="auth-side"><span class="hand">one quick step</span><blockquote>Verify your email address to keep your account secure and get started with your personalized skill-gap roadmap.</blockquote></div></div>
+</section>
+
 <!-- ROLE PICKER -->
 <section class="mkview" id="v-role" style="display:none">
   <div class="mk" style="padding-top:44px;padding-bottom:60px;max-width:900px">
