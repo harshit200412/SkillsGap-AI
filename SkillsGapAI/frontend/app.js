@@ -1209,14 +1209,47 @@ async function handleRegister() {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(authApiErrorMessage(data, "Registration failed."));
-    saveAuthSession(data);
-    applyAccountIdentity();
-    status.textContent = "Account created.";
-    await openRolePicker(true);
+    // Registration creates the account, but verification is required before using it.
+    status.textContent = "Account created. Check your inbox for the verification token.";
+    document.getElementById("verifyEmail").value = email;
+    document.getElementById("verifyToken").value = "";
+    showAuth("verify");
   } catch (error) {
     status.textContent = authConnectionError(error);
   } finally { button.disabled = false; }
 }
+async function handleEmailVerification() {
+  const email = document.getElementById("verifyEmail").value.trim();
+  const token = document.getElementById("verifyToken").value.trim();
+  const status = document.getElementById("verifyStatus");
+  const button = document.getElementById("verifyBtn");
+  if (!email || !token) { status.textContent = "Enter your email and the verification token."; return; }
+  button.disabled = true; status.textContent = "Verifying your email...";
+  try {
+    const response = await fetch(API_BASE_URL + "/api/auth/verify-email/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(authApiErrorMessage(data, "Verification failed."));
+    document.getElementById("loginEmail").value = email;
+    status.textContent = "Email verified! Redirecting you to login...";
+    setTimeout(() => showAuth("login"), 900);
+  } catch (error) { status.textContent = authConnectionError(error); }
+  finally { button.disabled = false; }
+}
+async function handleResendVerification() {
+  const email = document.getElementById("verifyEmail").value.trim();
+  const status = document.getElementById("verifyStatus");
+  const button = document.getElementById("resendVerifyBtn");
+  if (!email) { status.textContent = "Enter your email address first."; return; }
+  button.disabled = true; status.textContent = "Sending a new verification email...";
+  try {
+    const response = await fetch(API_BASE_URL + "/api/auth/verify-email/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(authApiErrorMessage(data, "Could not resend email."));
+    status.textContent = data.message || "If the account needs verification, an email has been sent. Check inbox and spam.";
+  } catch (error) { status.textContent = authConnectionError(error); }
+  finally { button.disabled = false; }
+}
+
 async function handleLogout() {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   if (refreshToken) {
