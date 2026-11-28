@@ -31,9 +31,10 @@ def send_verification_email(email: str, token: str) -> None:
     send_email(
         email,
         "Verify your SkillGap AI email",
-        "Verify your email using this link or token:\n\n"
+        "Welcome to SkillGap AI!\n\n"
+        "To activate your account, copy the verification token below and paste it into the Verify Email screen in SkillGap AI.\n\n"
         f"{link_or_token}\n\n"
-        "This verification token expires in 24 hours and can only be used once.",
+        "The token expires in 24 hours and can only be used once. If you did not create this account, ignore this email.",
     )
 
 
