@@ -204,8 +204,13 @@ def register(request: Request, credentials: RegistrationRequest, db: Session = D
     existing = db.query(models.User).filter_by(email=credentials.email).first()
     if existing:
         raise HTTPException(status_code=409, detail="An account with this email already exists")
-    if auth.REQUIRE_EMAIL_VERIFICATION and not auth_email_is_configured():
-        raise HTTPException(status_code=503, detail="Email verification is not configured on this server.")
+    # Registration must never silently succeed without sending the verification email.
+    # This also makes local development report missing SMTP configuration clearly.
+    if not auth_email_is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Email delivery is not configured. Configure SMTP_HOST and SMTP_FROM_EMAIL, then try again.",
+        )
 
     user = models.User(
         email=credentials.email,
@@ -224,13 +229,17 @@ def register(request: Request, credentials: RegistrationRequest, db: Session = D
         first_name=credentials.first_name,
         last_name=credentials.last_name,
     ))
-    if auth_email_is_configured():
-        try:
-            verification_token = issue_action_token(user, "verify_email", db)
-            send_verification_email(user.email, verification_token)
-        except Exception as exc:
-            db.rollback()
-            raise HTTPException(status_code=503, detail="Could not send verification email. Please try again.") from exc
+    try:
+        verification_token = issue_action_token(user, "verify_email", db)
+        send_verification_email(user.email, verification_token)
+    except Exception as exc:
+        logger.exception("Failed to send verification email during registration.")
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Could not send verification email. Check the backend SMTP configuration and logs, then try again.",
+        ) from exc
+
     response = issue_tokens(user, db)
     return response
 
